@@ -2,7 +2,6 @@
 #include "Emergencia.h"
 #include "Logica.h"
 #include "Motor.h"
-#include "Portas.h"
 #include <Arduino.h>
 #include <LiquidCrystal_I2C.h>
 #include <Wire.h>
@@ -10,21 +9,14 @@
 // Variável para guardar o tempo em que o elevador parou
 unsigned long tempoParada = 0;
 
-// Flag para garantir que o comando de abrir a porta só seja enviado UMA vez ao chegar no andar
-bool comandoPortaEnviado = false;
-
 void setup() {
   inicializarMotor();
   initBtsESensores();
   lcdInit();
   EmergenciaInit();
-  inicializarPortas(); // 2. Inicializa os servos e o ultrassônico
 }
 
 void loop() {
-  // Executa continuamente a máquina de estados das portas (Ultrassônico e Servo)
-  gerenciarMaquinaPortas(); 
-
   if (emergenciaAtivada == false) { // Se a emergência não estiver ativada, o elevador funciona normalmente
     
     if (telaEmergenciaEscrita == true) { 
@@ -42,7 +34,7 @@ void loop() {
       // Mostra o status parado de forma contínua e limpa
       lcdParado();
 
-      // Algoritmo SCAN decide para onde ir com base das chamadas
+      // Algoritmo SCAN decide para onde ir com base nas chamadas
       andarDestino = escolherProximoAndar();
 
       // Se houver alguma chamada pendente para outro andar, altera o estado
@@ -82,20 +74,14 @@ void loop() {
         lcd.clear();
         lcdChegou(); // Mostra a mensagem de "Chegou / Porta Aberta"
 
-        comandoPortaEnviado = false; // Reseta a flag para permitir a abertura da porta
-        estado = 2;                  // Muda para o estado de espera da porta aberta
+        tempoParada = millis(); // 🕒 Tira um "print" do tempo atual do relógio
+        estado = 2;             // Muda para o estado de espera da porta aberta
       }
     } else if (estado == 2) { // --------- ESTADO 2: PORTA ABERTA (ESPERANDO) ---------
 
-      // 3. Envia o comando de abertura apenas uma vez ao entrar no estado
-      if (!comandoPortaEnviado) {
-        comandarAberturaPorta(andarAtual); // Envia o andar atual (1, 2 ou 3) para abrir o servo certo
-        comandoPortaEnviado = true;
-      }
-
-      // 4. O elevador só sai do Estado 2 quando o módulo "Portas" garantir que fechou
-      // (Isso inclui o tempo de espera e a verificação do sensor ultrassônico)
-      if (portaEstaTotalmenteFechada()) {
+      // Enquanto o elevador espera a porta "fechar", ele CONTINUA lendo botões!
+      // Se passar 2500 milissegundos (2.5 segundos)...
+      if (millis() - tempoParada >= 2500) {
         lcd.clear();
         estado = 0; // Devolve o elevador para o modo PARADO, liberando para a próxima viagem
       }
