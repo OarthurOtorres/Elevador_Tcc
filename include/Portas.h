@@ -3,18 +3,17 @@
 
 #include <Servo.h>
 
-// Configurações mecânicas comuns
+// Configurações mecânicas e de tempo
 const int ANGULO_ABERTO  = 90; 
 const int ANGULO_FECHADO = 0;
-const int DISTANCIA_SEGURANCA = 15; // Em centímetros
-const unsigned long TEMPO_PORTA_ABERTA = 3000; // 3 segundos
+const unsigned long TEMPO_PORTA_ABERTA = 3000; // Tempo em ms que a porta fica aberta
 
-// Declaração dos objetos Servo como extern para serem usados em outros arquivos
+// Declaração dos objetos Servo
 extern Servo PortaAndar1;
 extern Servo PortaAndar2;
 extern Servo PortaAndar3;
 
-// Funções para controlar as portas do elevador
+// Funções públicas
 void inicializarPortas();
 void comandarAberturaPorta(int andar);
 void gerenciarMaquinaPortas();
