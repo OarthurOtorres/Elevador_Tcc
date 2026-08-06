@@ -7,10 +7,7 @@
 #include <LiquidCrystal_I2C.h>
 #include <Wire.h>
 
-// Variável para guardar o tempo em que o elevador parou
 unsigned long tempoParada = 0;
-
-// Flag para garantir que o comando de abrir a porta só seja enviado UMA vez ao chegar no andar
 bool comandoPortaEnviado = false;
 
 void setup() {
@@ -18,89 +15,99 @@ void setup() {
   initBtsESensores();
   lcdInit();
   EmergenciaInit();
-  inicializarPortas(); // 2. Inicializa os servos e o ultrassônico
+  inicializarPortas();
 }
 
 void loop() {
-  // Executa continuamente a máquina de estados das portas (Ultrassônico e Servo)
+  // Executa continuamente a máquina de estados das portas
   gerenciarMaquinaPortas(); 
 
-  if (emergenciaAtivada == false) { // Se a emergência não estiver ativada, o elevador funciona normalmente
+  if (emergenciaAtivada == false) { 
     
+    // Se saiu do modo de emergência, restaura o backlight e limpa o visor
     if (telaEmergenciaEscrita == true) { 
-      telaEmergenciaEscrita = false; // Reseta a flag para a próxima emergência
-      lcd.backlight();               // Força o backlight a ficar permanentemente ligado
-      lcd.clear();                   // Limpa o texto "EMERGENCIA ATIVA!" da tela
+      telaEmergenciaEscrita = false; 
+      lcd.backlight();               
+      lcd.clear();                   
     }
 
-    // 1. Faz a leitura contínua dos botões de chamada (NUNCA TRAVA!)
+    // Leitura contínua dos botões
     lerBotoes();
 
-    // 2. Máquina de Estados do Elevador
+    // ------------------ MÁQUINA DE ESTADOS DO ELEVADOR ------------------
     if (estado == 0) { // --------- ESTADO 0: PARADO ---------
 
-      // Mostra o status parado de forma contínua e limpa
+      // Atualiza o display com o status PARADO
       lcdParado();
 
-      // Algoritmo SCAN decide para onde ir com base das chamadas
-      andarDestino = escolherProximoAndar();
+      // 1. Checa se o botão do próprio andar onde está parado foi acionado
+      if (chamada[andarAtual] == true) {
+        chamada[andarAtual] = false; // Limpa a chamada imediatamente
+        comandoPortaEnviado = false; // Reseta a flag de abertura da porta
+        estado = 2;                  // Pula direto para Estado 2 (Porta)
+      } 
+      // 2. Consulta o algoritmo SCAN para ir a outros andares
+      else {
+        andarDestino = escolherProximoAndar();
 
-      // Se houver alguma chamada pendente para outro andar, altera o estado
-      // para se mover
-      if (andarDestino != andarAtual) {
-        estado = 1;
-        lcd.clear(); // Limpa a tela para a transição de movimento
+        if (andarDestino != andarAtual) {
+          estado = 1; // Vai para Estado 1 (Movimentação)
+        }
       }
+
     } else if (estado == 1) { // --------- ESTADO 1: MOVENDO ---------
 
-      // CONTROLE DE MOVIMENTO E ATUALIZAÇÃO DE POSIÇÃO
       if (andarDestino > andarAtual) {
         ligarMotorSubir();
-        lcdSubindo(); // Atualiza o display informando que está subindo
+        lcdSubindo(); // Exibe "STATUS: SUBINDO" e a rota dinâmica na linha 2
 
         if (sensorAtivo(andarAtual + 1)) {
           andarAtual++;
-          delay(600); // Pausa curta física apenas para alinhar no sensor
+          delay(600); // Pausa física para alinhamento no sensor
         }
       } else if (andarDestino < andarAtual) {
         ligarMotorDescer();
-        lcdDescendo(); // Atualiza o display informando que está descendo
+        lcdDescendo(); // Exibe "STATUS: DESCENDO" e a rota dinâmica na linha 2
 
         if (sensorAtivo(andarAtual - 1)) {
           andarAtual--;
-          delay(600); // Pausa curta física apenas para alinhar no sensor
+          delay(600); 
         }
       }
 
-      // CONDIÇÃO DE PARADA INTELIGENTE
+      // CONDIÇÃO DE PARADA INTELIGENTE (Para no destino final OU se houver chamada no caminho)
       if ((andarAtual == andarDestino && sensorAtivo(andarDestino)) ||
           (chamada[andarAtual] && sensorAtivo(andarAtual))) {
 
         pararMotor();
-        chamada[andarAtual] = false; // Limpa a chamada deste andar
-
-        lcd.clear();
-        lcdChegou(); // Mostra a mensagem de "Chegou / Porta Aberta"
-
-        comandoPortaEnviado = false; // Reseta a flag para permitir a abertura da porta
-        estado = 2;                  // Muda para o estado de espera da porta aberta
+        chamada[andarAtual] = false; 
+        comandoPortaEnviado = false; 
+        estado = 2;                  
       }
-    } else if (estado == 2) { // --------- ESTADO 2: PORTA ABERTA (ESPERANDO) ---------
 
-      // 3. Envia o comando de abertura apenas uma vez ao entrar no estado
+    } else if (estado == 2) { // --------- ESTADO 2: PORTA ABERTA ---------
+
+      // Limpa chamadas do andar atual para o botão não prender em loop
+      chamada[andarAtual] = false; 
+
+      // Atualiza o display com o status PORTAS
+      lcdChegou();
+
       if (!comandoPortaEnviado) {
-        comandarAberturaPorta(andarAtual); // Envia o andar atual (1, 2 ou 3) para abrir o servo certo
+        comandarAberturaPorta(andarAtual); 
         comandoPortaEnviado = true;
       }
 
-      // 4. O elevador só sai do Estado 2 quando o módulo "Portas" garantir que fechou
-      // (Isso inclui o tempo de espera e a verificação do sensor ultrassônico)
+      // Quando o módulo 'Portas' confirmar que a porta FECHOU 100%:
       if (portaEstaTotalmenteFechada()) {
-        lcd.clear();
-        estado = 0; // Devolve o elevador para o modo PARADO, liberando para a próxima viagem
+        chamada[andarAtual] = false; 
+        estado = 0; // Volta para o modo PARADO para reavaliar se há mais viagens
       }
     }
-  } else { // Se a emergência estiver ativada, o elevador para e faz a rotina de segurança
+
+  } else { 
+    // Em emergência, chama a rotina de hardware e a animação de display
     rotinaSeguranca();
+    lcdEmergencia();
   }
 }

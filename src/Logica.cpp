@@ -5,6 +5,7 @@
 #define Bt1 4
 #define Bt2 5
 #define Bt3 6
+
 // Sensores de posição (INPUT_PULLUP)
 #define S1 7
 #define S2 8
@@ -26,12 +27,27 @@ void initBtsESensores() {
 }
 
 void lerBotoes() {
-  if (!digitalRead(Bt1))
-    chamada[1] = true;
-  if (!digitalRead(Bt2))
-    chamada[2] = true;
-  if (!digitalRead(Bt3))
-    chamada[3] = true;
+  // Leitura com filtro Debounce (evita múltiplos disparos por ruído do botão mecânico)
+  if (digitalRead(Bt1) == LOW) {
+    delay(50);
+    if (digitalRead(Bt1) == LOW) {
+      chamada[1] = true;
+    }
+  }
+
+  if (digitalRead(Bt2) == LOW) {
+    delay(50);
+    if (digitalRead(Bt2) == LOW) {
+      chamada[2] = true;
+    }
+  }
+
+  if (digitalRead(Bt3) == LOW) {
+    delay(50);
+    if (digitalRead(Bt3) == LOW) {
+      chamada[3] = true;
+    }
+  }
 }
 
 int escolherProximoAndar() {

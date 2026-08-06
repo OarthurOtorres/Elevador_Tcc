@@ -1,19 +1,20 @@
 #ifndef Portas_h
 #define Portas_h
 
+#include <Arduino.h>
 #include <Servo.h>
 
-// Configurações mecânicas e de tempo
 const int ANGULO_ABERTO  = 90; 
 const int ANGULO_FECHADO = 0;
-const unsigned long TEMPO_PORTA_ABERTA = 3000; // Tempo em ms que a porta fica aberta
 
-// Declaração dos objetos Servo
-extern Servo PortaAndar1;
-extern Servo PortaAndar2;
-extern Servo PortaAndar3;
+// Tempo que a porta permanece aberta (em milissegundos)
+const unsigned long TEMPO_PORTA_ABERTA = 3000; 
 
-// Funções públicas
+// Objetos Servo para cada andar
+extern Servo servo1;
+extern Servo servo2;
+extern Servo servo3;
+
 void inicializarPortas();
 void comandarAberturaPorta(int andar);
 void gerenciarMaquinaPortas();

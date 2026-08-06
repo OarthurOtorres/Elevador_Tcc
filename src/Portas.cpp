@@ -1,86 +1,83 @@
 #include "Portas.h"
-#include <Arduino.h>
 
-Servo PortaAndar1;
-Servo PortaAndar2;
-Servo PortaAndar3;
+// Pinos dos Servos (Ajuste se no seu circuito estiver diferente)
+#define PIN_SERVO1 A0
+#define PIN_SERVO2 A1
+#define PIN_SERVO3 A2
 
-enum EstadoPorta {
-    PORTA_FECHADA,
-    PORTA_ABRINDO,
-    PORTA_ABERTA_ESPERANDO,
-    PORTA_FECHANDO
-};
+Servo servo1;
+Servo servo2;
+Servo servo3;
 
-EstadoPorta estadoAtualPorta = PORTA_FECHADA;
-unsigned long tempoInicioEspera = 0;
-int andarAtivo = 1;
-bool comandoAbrir = false;
-
-void moverServoAndar(int andar, int angulo) {
-    if (andar == 1) PortaAndar1.write(angulo);
-    else if (andar == 2) PortaAndar2.write(angulo);
-    else if (andar == 3) PortaAndar3.write(angulo);
-}
+// Estados: 0=Fechada, 1=Abrindo, 2=Aberta, 3=Fechando
+int estadoPorta = 0; 
+unsigned long tempoInicioEstado = 0;
+int andarServoAtivo = 0;
+bool cicloPortaOcupado = false;
 
 void inicializarPortas() {
-    PortaAndar1.attach(A0);
-    PortaAndar2.attach(A1);
-    PortaAndar3.attach(A2);
+  servo1.attach(PIN_SERVO1);
+  servo2.attach(PIN_SERVO2);
+  servo3.attach(PIN_SERVO3);
 
-    // Garante que todas começam fechadas
-    PortaAndar1.write(ANGULO_FECHADO);
-    PortaAndar2.write(ANGULO_FECHADO);
-    PortaAndar3.write(ANGULO_FECHADO);
-    
-    estadoAtualPorta = PORTA_FECHADA;
-    comandoAbrir = false;
+  // Garante portas fechadas no início
+  servo1.write(ANGULO_FECHADO);
+  servo2.write(ANGULO_FECHADO);
+  servo3.write(ANGULO_FECHADO);
+  
+  estadoPorta = 0;
+  cicloPortaOcupado = false;
 }
 
 void comandarAberturaPorta(int andar) {
-    if (andar >= 1 && andar <= 3) {
-        andarAtivo = andar;
-        comandoAbrir = true;
-    }
-}
+  andarServoAtivo = andar;
+  estadoPorta = 1; // Inicia estado 'Abrindo'
+  cicloPortaOcupado = true;
+  tempoInicioEstado = millis();
 
-bool portaEstaTotalmenteFechada() {
-    return (estadoAtualPorta == PORTA_FECHADA);
+  // ENVIA O COMANDO DIRETO PRO SERVO GIRAR AGORA!
+  if (andarServoAtivo == 1)      servo1.write(ANGULO_ABERTO);
+  else if (andarServoAtivo == 2) servo2.write(ANGULO_ABERTO);
+  else if (andarServoAtivo == 3) servo3.write(ANGULO_ABERTO);
 }
 
 void gerenciarMaquinaPortas() {
-    switch (estadoAtualPorta) {
-        case PORTA_FECHADA:
-            if (comandoAbrir) {
-                moverServoAndar(andarAtivo, ANGULO_ABERTO);
-                estadoAtualPorta = PORTA_ABRINDO;
-                tempoInicioEspera = millis();
-                comandoAbrir = false;
-            }
-            break;
+  if (estadoPorta == 0) return; // Se está fechada, não faz nada
 
-        case PORTA_ABRINDO:
-            // Dá 800ms para o servo chegar fisicamente a 90 graus
-            if (millis() - tempoInicioEspera >= 800) {
-                estadoAtualPorta = PORTA_ABERTA_ESPERANDO;
-                tempoInicioEspera = millis();
-            }
-            break;
+  unsigned long tempoAtual = millis();
 
-        case PORTA_ABERTA_ESPERANDO:
-            // Aguarda os 3 segundos com a porta aberta
-            if (millis() - tempoInicioEspera >= TEMPO_PORTA_ABERTA) {
-                moverServoAndar(andarAtivo, ANGULO_FECHADO);
-                tempoInicioEspera = millis();
-                estadoAtualPorta = PORTA_FECHANDO;
-            }
-            break;
-
-        case PORTA_FECHANDO:
-            // Dá 800ms para o servo fechar completamente antes de avisar a main
-            if (millis() - tempoInicioEspera >= 800) {
-                estadoAtualPorta = PORTA_FECHADA;
-            }
-            break;
+  // Estado 1: Abrindo (espera 1s pro servo físico girar até 90 graus)
+  if (estadoPorta == 1) {
+    if (tempoAtual - tempoInicioEstado >= 1000) {
+      estadoPorta = 2; // Passa pro estado de esperar aberta
+      tempoInicioEstado = tempoAtual;
     }
+  }
+  // Estado 2: Espera com a porta aberta (aguarda os 3s da constante)
+  else if (estadoPorta == 2) {
+    if (tempoAtual - tempoInicioEstado >= TEMPO_PORTA_ABERTA) {
+      estadoPorta = 3; // Inicia o fechamento
+      tempoInicioEstado = tempoAtual;
+
+      // COMANDO DIRETO PRO SERVO FECHAR!
+      if (andarServoAtivo == 1)      servo1.write(ANGULO_FECHADO);
+      else if (andarServoAtivo == 2) servo2.write(ANGULO_FECHADO);
+      else if (andarServoAtivo == 3) servo3.write(ANGULO_FECHADO);
+    }
+  }
+  // Estado 3: Fechando (espera 1s pro servo físico voltar pra 0 graus)
+  else if (estadoPorta == 3) {
+    if (tempoAtual - tempoInicioEstado >= 1000) {
+      estadoPorta = 0; // Terminou todo o ciclo!
+    }
+  }
+}
+
+// Retorna 'true' para o main.cpp apenas quando O CICLO INTEIRO terminar
+bool portaEstaTotalmenteFechada() {
+  if (cicloPortaOcupado && estadoPorta == 0) {
+    cicloPortaOcupado = false; // Libera para a próxima viagem
+    return true;
+  }
+  return false;
 }

@@ -14,6 +14,20 @@ bool estadoPiscaEmergencia = false;
 // Controla o número de escritas no display em caso de emergência para evitar sobrecarga
 bool telaEmergenciaEscrita = false;
 
+// Função auxiliar interna para descobrir a próxima parada imediata no caminho
+int obterProximaParada() {
+  if (andarDestino > andarAtual) { // Subindo
+    for (int i = andarAtual + 1; i <= andarDestino; i++) {
+      if (chamada[i]) return i;
+    }
+  } else if (andarDestino < andarAtual) { // Descendo
+    for (int i = andarAtual - 1; i >= andarDestino; i--) {
+      if (chamada[i]) return i;
+    }
+  }
+  return andarDestino;
+}
+
 // Inicialização física do display LCD
 void lcdInit() {
   lcd.init();
@@ -33,50 +47,56 @@ void lcdParado() {
   lcd.setCursor(0, 1);
   lcd.print("Andar Atual: ");
   lcd.print(andarAtual);
-  lcd.print("   ");
+  lcd.print("   "); // Espaços para limpar a linha
 }
 
-// Mostra o status atual e onde o elevador está estacionado
+// Mostra a rota dinâmica subindo (ex: "1 -> 2" se o 2 for chamado antes de chegar no 3)
 void lcdSubindo() {
   lcd.setCursor(0, 0);
   lcd.print("STATUS: SUBINDO ");
   lcd.setCursor(0, 1);
-  lcd.print("Andar Atual: ");
+  lcd.print("Rota: ");
   lcd.print(andarAtual);
+  lcd.print(" -> ");
+  lcd.print(obterProximaParada());
   lcd.print("   ");
 }
 
-// Mostra o status atual e onde o elevador está estacionado
+// Mostra a rota dinâmica descendo
 void lcdDescendo() {
   lcd.setCursor(0, 0);
   lcd.print("STATUS: DESCENDO");
   lcd.setCursor(0, 1);
+  lcd.print("Rota: ");
+  lcd.print(andarAtual);
+  lcd.print(" -> ");
+  lcd.print(obterProximaParada());
+  lcd.print("   ");
+}
+
+// Mostra o status quando atinge o andar e abre as portas
+void lcdChegou() {
+  lcd.setCursor(0, 0);
+  lcd.print("STATUS: PORTAS  ");
+  lcd.setCursor(0, 1);
   lcd.print("Andar Atual: ");
   lcd.print(andarAtual);
   lcd.print("   ");
 }
 
-// Mostra que chegou no andar de destino e que as portas estão abertas
-void lcdChegou() {
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("CHEGOU NO ANDAR!");
-  lcd.setCursor(0, 1);
-  lcd.print(" Portas Abertas ");
-}
-
-// Mostra que o elevador está em estado de emergência
+// Mostra que o elevador está em emergência e pisca o backlight
 void lcdEmergencia() {
-  if(telaEmergenciaEscrita == false) { // Evita que o display seja escrito várias vezes, sobrecarregando o LCD
+  if (telaEmergenciaEscrita == false) { 
     lcd.clear();
     lcd.setCursor(0, 0);
-    lcd.print("EMERGENCIA ATIVA!");
+    lcd.print("EMERGENCIA ATIVA");
     lcd.setCursor(0, 1);
-    lcd.print("Pressione Reset");
+    lcd.print("Pressione Reset ");
     telaEmergenciaEscrita = true;
   }
 
-  if (millis() - tempoPiscaEmergencia >= 500) { // Pisca o backlight a cada 500ms
+  // Pisca o backlight a cada 500ms
+  if (millis() - tempoPiscaEmergencia >= 500) { 
     tempoPiscaEmergencia = millis();
     estadoPiscaEmergencia = !estadoPiscaEmergencia;
     
