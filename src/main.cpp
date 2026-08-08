@@ -9,6 +9,7 @@
 
 unsigned long tempoParada = 0;
 bool comandoPortaEnviado = false;
+bool emergenciasTratadas = false; // Flag para transição de emergência
 
 void setup() {
   inicializarMotor();
@@ -19,55 +20,50 @@ void setup() {
 }
 
 void loop() {
-  // Executa continuamente a máquina de estados das portas
   gerenciarMaquinaPortas(); 
 
   if (emergenciaAtivada == false) { 
     
-    // Se saiu do modo de emergência, restaura o backlight e limpa o visor
-    if (telaEmergenciaEscrita == true) { 
+    // SE ACABOU DE SAIR DA EMERGÊNCIA:
+    if (emergenciasTratadas == true) { 
+      pararMotor();                       // Garante motor parado
+      restaurarPortasAposEmergencia(andarAtual); // Reativa os servos e FECHA as portas
       telaEmergenciaEscrita = false; 
       lcd.backlight();               
       lcd.clear();                   
+      emergenciasTratadas = false;       // Reseta a flag de emergência
+      estado = 0;                        // Volta para o estado PARADO
     }
 
-    // Leitura contínua dos botões
     lerBotoes();
 
     // ------------------ MÁQUINA DE ESTADOS DO ELEVADOR ------------------
-    if (estado == 0) { // --------- ESTADO 0: PARADO ---------
-
-      // Atualiza o display com o status PARADO
+    if (estado == 0) { // --------- PARADO ---------
       lcdParado();
 
-      // 1. Checa se o botão do próprio andar onde está parado foi acionado
       if (chamada[andarAtual] == true) {
-        chamada[andarAtual] = false; // Limpa a chamada imediatamente
-        comandoPortaEnviado = false; // Reseta a flag de abertura da porta
-        estado = 2;                  // Pula direto para Estado 2 (Porta)
-      } 
-      // 2. Consulta o algoritmo SCAN para ir a outros andares
-      else {
+        chamada[andarAtual] = false; 
+        comandoPortaEnviado = false; 
+        estado = 2;                  
+      } else {
         andarDestino = escolherProximoAndar();
-
         if (andarDestino != andarAtual) {
-          estado = 1; // Vai para Estado 1 (Movimentação)
+          estado = 1; 
         }
       }
 
-    } else if (estado == 1) { // --------- ESTADO 1: MOVENDO ---------
-
+    } else if (estado == 1) { // --------- MOVENDO ---------
       if (andarDestino > andarAtual) {
         ligarMotorSubir();
-        lcdSubindo(); // Exibe "STATUS: SUBINDO" e a rota dinâmica na linha 2
+        lcdSubindo();
 
         if (sensorAtivo(andarAtual + 1)) {
           andarAtual++;
-          delay(600); // Pausa física para alinhamento no sensor
+          delay(600); 
         }
       } else if (andarDestino < andarAtual) {
         ligarMotorDescer();
-        lcdDescendo(); // Exibe "STATUS: DESCENDO" e a rota dinâmica na linha 2
+        lcdDescendo();
 
         if (sensorAtivo(andarAtual - 1)) {
           andarAtual--;
@@ -75,7 +71,6 @@ void loop() {
         }
       }
 
-      // CONDIÇÃO DE PARADA INTELIGENTE (Para no destino final OU se houver chamada no caminho)
       if ((andarAtual == andarDestino && sensorAtivo(andarDestino)) ||
           (chamada[andarAtual] && sensorAtivo(andarAtual))) {
 
@@ -85,12 +80,8 @@ void loop() {
         estado = 2;                  
       }
 
-    } else if (estado == 2) { // --------- ESTADO 2: PORTA ABERTA ---------
-
-      // Limpa chamadas do andar atual para o botão não prender em loop
+    } else if (estado == 2) { // --------- PORTA ABERTA ---------
       chamada[andarAtual] = false; 
-
-      // Atualiza o display com o status PORTAS
       lcdChegou();
 
       if (!comandoPortaEnviado) {
@@ -98,15 +89,21 @@ void loop() {
         comandoPortaEnviado = true;
       }
 
-      // Quando o módulo 'Portas' confirmar que a porta FECHOU 100%:
       if (portaEstaTotalmenteFechada()) {
         chamada[andarAtual] = false; 
-        estado = 0; // Volta para o modo PARADO para reavaliar se há mais viagens
+        estado = 0; 
       }
     }
 
   } else { 
-    // Em emergência, chama a rotina de hardware e a animação de display
+    // ------------------ MODO EMERGÊNCIA ATIVO ------------------
+    
+    if (emergenciasTratadas == false) {
+      pararMotor();                       // Interrompe a subida/descida
+      ativarPortaEmergencia(andarAtual); // Abre a porta se estiver no andar e desativa os servos
+      emergenciasTratadas = true;         // Executa a transição apenas uma vez
+    }
+
     rotinaSeguranca();
     lcdEmergencia();
   }
