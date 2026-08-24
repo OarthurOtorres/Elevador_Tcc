@@ -1,31 +1,35 @@
 #include "Motor.h"
 #include <Arduino.h>
 
-// Pinos que controlam os dois relés (Subir e Descer)
-#define ReleSubir 12
-#define ReleDescer 13
+#define RPWM_Subir  10
+#define LPWM_Descer 11
 
 void inicializarMotor() {
-  pinMode(ReleSubir, OUTPUT);
-  pinMode(ReleDescer, OUTPUT);
+  pinMode(RPWM_Subir, OUTPUT);
+  pinMode(LPWM_Descer, OUTPUT);
 
-  // Como é Low Level Trigger, HIGH mantém o relé DESLIGADO
-  digitalWrite(ReleSubir, HIGH);
-  digitalWrite(ReleDescer, HIGH);
+  analogWrite(RPWM_Subir, 0);
+  analogWrite(LPWM_Descer, 0);
 }
 
 void ligarMotorSubir() {
-  digitalWrite(ReleDescer, HIGH); // Garante que o de descida está desligado
-  digitalWrite(ReleSubir, LOW);   // LOW liga o relé de subida
+  // Desliga o sentido oposto na hora e aplica 100% no sentido correto
+  analogWrite(LPWM_Descer, 0);
+  analogWrite(RPWM_Subir, VELOCIDADE_MOTOR);
 }
 
 void ligarMotorDescer() {
-  digitalWrite(ReleSubir, HIGH); // Garante que o de subida está desligado
-  digitalWrite(ReleDescer, LOW); // LOW liga o relé de descida
+  // Desliga o sentido oposto na hora e aplica 100% no sentido correto
+  analogWrite(RPWM_Subir, 0);
+  analogWrite(LPWM_Descer, VELOCIDADE_MOTOR);
 }
 
 void pararMotor() {
-  // Desliga ambos os relés enviando HIGH
-  digitalWrite(ReleSubir, HIGH);
-  digitalWrite(ReleDescer, HIGH);
+  // Zera ambos instantaneamente
+  analogWrite(RPWM_Subir, 0);
+  analogWrite(LPWM_Descer, 0);
+}
+
+void atualizarRampaMotor() {
+  // Função vazia: mantida apenas para evitar erro de compilação caso esteja no seu main.cpp
 }

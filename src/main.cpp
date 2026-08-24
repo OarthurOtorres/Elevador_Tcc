@@ -23,6 +23,7 @@ void setup() {
 }
 
 void loop() {
+  atualizarRampaMotor();
   // Processa entrada e saída de dados do Bluetooth
   lerComandosBluetooth();
   atualizarInterfaceBluetooth();
