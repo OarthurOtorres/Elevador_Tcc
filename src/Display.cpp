@@ -4,8 +4,8 @@
 #include <LiquidCrystal_I2C.h>
 #include <Wire.h>
 
-// Inicializa o display LCD no endereço 0x27 com 16 colunas e 2 linhas
-LiquidCrystal_I2C lcd(0x27, 16, 2);
+// Inicializa o display LCD no endereço 0x20 com 16 colunas e 2 linhas
+LiquidCrystal_I2C lcd(0x20, 16, 2);
 
 // Variáveis para controlar o piscar do backlight em caso de emergência 
 unsigned long tempoPiscaEmergencia = 0;
