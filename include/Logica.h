@@ -11,6 +11,7 @@ extern int direcaoAtual;
 // Funções do sistema
 void initBtsESensores();
 void lerBotoes();
+void atualizarLedsBotoes(); // Atualiza o estado físico dos LEDs no PCF8574
 int escolherProximoAndar();
 bool sensorAtivo(int andar);
 

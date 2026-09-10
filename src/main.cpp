@@ -24,6 +24,7 @@ void setup() {
 
 void loop() {
   atualizarRampaMotor();
+  
   // Processa entrada e saída de dados do Bluetooth
   lerComandosBluetooth();
   atualizarInterfaceBluetooth();
@@ -45,6 +46,7 @@ void loop() {
     }
 
     lerBotoes();
+    atualizarLedsBotoes(); // Garante atualização contínua dos LEDs via PCF8574
 
     // ------------------ MÁQUINA DE ESTADOS DO ELEVADOR ------------------
     if (estado == 0) { // --------- PARADO ---------
@@ -134,5 +136,6 @@ void loop() {
 
     rotinaSeguranca();
     lcdEmergencia();
+    atualizarLedsBotoes(); // Mantém o estado correto dos LEDs mesmo na emergência
   }
 }
