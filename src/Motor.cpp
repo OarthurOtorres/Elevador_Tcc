@@ -2,7 +2,7 @@
 #include <Arduino.h>
 
 #define RPWM_Subir  10
-#define LPWM_Descer 11
+#define LPWM_Descer 9
 
 void inicializarMotor() {
   pinMode(RPWM_Subir, OUTPUT);

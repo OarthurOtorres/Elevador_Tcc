@@ -4,8 +4,8 @@
 #include <Arduino.h>
 
 // Pino do botão de emergência (INPUT_PULLUP)
-#define BtEmergencia 3
-#define BtReset 2
+#define BtEmergencia 2
+#define BtReset 3
 
 // Variável para armazenar o estado do botão de emergência
 volatile bool emergenciaAtivada = false;

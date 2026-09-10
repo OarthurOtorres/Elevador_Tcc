@@ -7,9 +7,9 @@
 #define Bt3 6
 
 // Sensores de posição (INPUT_PULLUP)
-#define S1 7
-#define S2 8
-#define S3 9
+#define S1 5
+#define S2 6
+#define S3 7
 
 bool chamada[4] = {false, false, false, false};
 int andarAtual = 1;
