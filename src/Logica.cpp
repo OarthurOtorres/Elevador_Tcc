@@ -1,4 +1,5 @@
 #include "Logica.h"
+#include "Motor.h"
 #include <Arduino.h>
 #include <Wire.h>
 
@@ -33,8 +34,28 @@ bool sensorAtivo(int andar) {
   return false;
 }
 
+void executarHoming() {
+  // Se nenhum sensor responder na partida, inicia o resgate descendo
+  ligarMotorDescer();
+  
+  // Desce até encontrar QUALQUER um dos 3 sensores
+  while (!sensorAtivo(1) && !sensorAtivo(2) && !sensorAtivo(3)) {
+    atualizarRampaMotor();
+    delay(10);
+  }
+  
+  pararMotor();
+
+  // Identifica qual sensor foi atingido durante a descida de resgate
+  if (sensorAtivo(1)) andarAtual = 1;
+  else if (sensorAtivo(2)) andarAtual = 2;
+  else if (sensorAtivo(3)) andarAtual = 3;
+
+  andarDestino = andarAtual;
+}
+
 void detectarAndarInicial() {
-  delay(200);
+  delay(200); // Tempo para estabilização elétrica dos sensores
 
   if (lerSensorComFiltro(S1)) {
     andarAtual = 1;
@@ -46,8 +67,8 @@ void detectarAndarInicial() {
     andarAtual = 3;
     andarDestino = 3;
   } else {
-    andarAtual = 1;
-    andarDestino = 1;
+    // NENHUM SENSOR ATIVO (parou entre andares por falta de energia)
+    executarHoming();
   }
 }
 
@@ -56,13 +77,15 @@ void initBtsESensores() {
   pinMode(S2, INPUT_PULLUP);
   pinMode(S3, INPUT_PULLUP);
 
-  detectarAndarInicial();
-
   Wire.begin();
 
+  // Inicializa a comunicação I2C
   Wire.beginTransmission(PCF_ADDR);
   Wire.write(0b01101101);
   Wire.endTransmission();
+
+  // Detecta o andar ou executa a busca de posição (Homing)
+  detectarAndarInicial();
 }
 
 void atualizarLedsBotoes() {
