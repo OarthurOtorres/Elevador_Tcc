@@ -1,144 +1,156 @@
 #include "Portas.h"
-#include "Logica.h" // Incluído para reconhecer a função sensorAtivo()
+#include "DingDong.h"
+#include <Arduino.h>
+#include <Servo.h>
 
-// Pinos dos Servos nas entradas analógicas A0, A1 e A2
-#define PIN_SERVO1 A0
-#define PIN_SERVO2 A1
-#define PIN_SERVO3 A2
+// Definir o pino do Sensor IR (Módulo FC-51 / TCRT5000)
+#define SENSOR_IV_PIN 8
 
-Servo servo1;
-Servo servo2;
-Servo servo3;
+// Pinos dos Servos das Portas (Ajuste se seus pinos forem diferentes)
+#define SERVO_P1 11
+#define SERVO_P2 12
+#define SERVO_P3 13
 
-int estadoPorta = 0; // 0=Fechada, 1=Abrindo, 2=Aberta, 3=Fechando
-unsigned long tempoInicioEstado = 0;
-int andarServoAtivo = 0;
-bool cicloPortaOcupado = false;
+// Ângulos dos Servos
+#define ANGULO_FECHADO 0
+#define ANGULO_ABERTO  90
+
+// Estados da Porta
+enum EstadoPorta {
+  PORTA_FECHADA,
+  PORTA_ABRINDO,
+  PORTA_ABERTA,
+  PORTA_FECHANDO
+};
+
+static EstadoPorta estadoAtualPorta = PORTA_FECHADA;
+static int andarAtualPorta = 1;
+static unsigned long tempoInicioEstado = 0;
+static unsigned long tempoInicioObstrucao = 0;
+static bool obstruindoAnterior = false;
+
+Servo servoP1;
+Servo servoP2;
+Servo servoP3;
+
+// Módulo FC-51: Saída LOW (0) significa OBSTÁCULO DETECTADO
+bool sensorObstaculoAtivo() {
+  return (digitalRead(SENSOR_IV_PIN) == LOW);
+}
+
+Servo* getServoAndar(int andar) {
+  if (andar == 1) return &servoP1;
+  if (andar == 2) return &servoP2;
+  if (andar == 3) return &servoP3;
+  return &servoP1;
+}
 
 void inicializarPortas() {
-  servo1.attach(PIN_SERVO1);
-  servo2.attach(PIN_SERVO2);
-  servo3.attach(PIN_SERVO3);
+  pinMode(SENSOR_IV_PIN, INPUT);
 
-  servo1.write(ANGULO_FECHADO);
-  servo2.write(ANGULO_FECHADO);
-  servo3.write(ANGULO_FECHADO);
-  
-  estadoPorta = 0;
-  cicloPortaOcupado = false;
+  servoP1.attach(SERVO_P1);
+  servoP2.attach(SERVO_P2);
+  servoP3.attach(SERVO_P3);
+
+  servoP1.write(ANGULO_FECHADO);
+  servoP2.write(ANGULO_FECHADO);
+  servoP3.write(ANGULO_FECHADO);
+
+  estadoAtualPorta = PORTA_FECHADA;
 }
 
 void comandarAberturaPorta(int andar) {
-  andarServoAtivo = andar;
-  estadoPorta = 1;
-  cicloPortaOcupado = true;
+  andarAtualPorta = andar;
+  estadoAtualPorta = PORTA_ABRINDO;
   tempoInicioEstado = millis();
 
-  if (andarServoAtivo == 1) {
-    servo1.attach(PIN_SERVO1);
-    servo1.write(ANGULO_ABERTO);
-  } else if (andarServoAtivo == 2) {
-    servo2.attach(PIN_SERVO2);
-    servo2.write(ANGULO_ABERTO);
-  } else if (andarServoAtivo == 3) {
-    servo3.attach(PIN_SERVO3);
-    servo3.write(ANGULO_ABERTO);
-  }
+  Servo* s = getServoAndar(andarAtualPorta);
+  if (!s->attached()) s->attach(andar == 1 ? SERVO_P1 : (andar == 2 ? SERVO_P2 : SERVO_P3));
+  s->write(ANGULO_ABERTO);
 }
 
 void gerenciarMaquinaPortas() {
-  if (estadoPorta == 0) return;
+  unsigned long agora = millis();
+  bool haObstaculo = sensorObstaculoAtivo();
 
-  unsigned long tempoAtual = millis();
+  switch (estadoAtualPorta) {
+    
+    case PORTA_FECHADA:
+      setAlertaObstrucao(false);
+      break;
 
-  // Estado 1: Abrindo
-  if (estadoPorta == 1) {
-    if (tempoAtual - tempoInicioEstado >= 1000) {
-      estadoPorta = 2;
-      tempoInicioEstado = tempoAtual;
-    }
-  }
-  // Estado 2: Aberta
-  else if (estadoPorta == 2) {
-    if (tempoAtual - tempoInicioEstado >= TEMPO_PORTA_ABERTA) {
-      estadoPorta = 3;
-      tempoInicioEstado = tempoAtual;
+    case PORTA_ABRINDO:
+      // Aguarda tempo do movimento do servo (1 segundo para abrir)
+      if (agora - tempoInicioEstado >= 1000) {
+        estadoAtualPorta = PORTA_ABERTA;
+        tempoInicioEstado = agora;
+        tempoInicioObstrucao = agora;
+      }
+      break;
 
-      if (andarServoAtivo == 1)      servo1.write(ANGULO_FECHADO);
-      else if (andarServoAtivo == 2) servo2.write(ANGULO_FECHADO);
-      else if (andarServoAtivo == 3) servo3.write(ANGULO_FECHADO);
-    }
-  }
-  // Estado 3: Fechando
-  else if (estadoPorta == 3) {
-    if (tempoAtual - tempoInicioEstado >= 1000) {
-      estadoPorta = 0;
-    }
+    case PORTA_ABERTA:
+      if (haObstaculo) {
+        // Reinicia o tempo de espera de fechamento enquanto alguém estiver na porta
+        tempoInicioEstado = agora; 
+
+        // Se o obstáculo persistir por mais de 4 segundos, dispara alerta sonoro
+        if (agora - tempoInicioObstrucao >= 4000) {
+          setAlertaObstrucao(true);
+        }
+      } else {
+        // Sem obstáculo: reseta o tempo de obstrução e desliga alerta
+        tempoInicioObstrucao = agora;
+        setAlertaObstrucao(false);
+
+        // Após 3 segundos sem ninguém na porta, começa a fechar
+        if (agora - tempoInicioEstado >= 3000) {
+          estadoAtualPorta = PORTA_FECHANDO;
+          tempoInicioEstado = agora;
+
+          Servo* s = getServoAndar(andarAtualPorta);
+          s->write(ANGULO_FECHADO);
+        }
+      }
+      break;
+
+    case PORTA_FECHANDO:
+      // REABERTURA INSTANTÂNEA ANTI-ESMAGAMENTO:
+      if (haObstaculo) {
+        // Alguém colocou a mão/corpo durante o fechamento!
+        // Inverte a porta imediatamente para ABRINDO
+        estadoAtualPorta = PORTA_ABRINDO;
+        tempoInicioEstado = agora;
+        tempoInicioObstrucao = agora;
+
+        Servo* s = getServoAndar(andarAtualPorta);
+        s->write(ANGULO_ABERTO);
+        break;
+      }
+
+      // Conclui o fechamento após 1 segundo
+      if (agora - tempoInicioEstado >= 1000) {
+        estadoAtualPorta = PORTA_FECHADA;
+        setAlertaObstrucao(false);
+      }
+      break;
   }
 }
 
 bool portaEstaTotalmenteFechada() {
-  if (cicloPortaOcupado && estadoPorta == 0) {
-    cicloPortaOcupado = false;
-    return true;
-  }
-  return false;
+  return (estadoAtualPorta == PORTA_FECHADA);
 }
 
-// ---------------- FUNÇÕES DE EMERGÊNCIA ----------------
-
-// Função de emergência com verificação do sensor do andar
-void ativarPortaEmergencia(int andarAtual) {
-  
-  // Só abre a porta se o elevador estiver realmente parado no sensor do andar
-  if (sensorAtivo(andarAtual)) {
-    if (andarAtual == 1) {
-      servo1.attach(PIN_SERVO1);
-      servo1.write(ANGULO_ABERTO);
-    } else if (andarAtual == 2) {
-      servo2.attach(PIN_SERVO2);
-      servo2.write(ANGULO_ABERTO);
-    } else if (andarAtual == 3) {
-      servo3.attach(PIN_SERVO3);
-      servo3.write(ANGULO_ABERTO);
-    }
-    
-    delay(500); // Dá tempo físico para o motor mover
-  } 
-  else {
-    // Se parou no meio do caminho (sem sensor ativo): MANTÉM TODAS FECHADAS!
-    servo1.attach(PIN_SERVO1);
-    servo2.attach(PIN_SERVO2);
-    servo3.attach(PIN_SERVO3);
-
-    servo1.write(ANGULO_FECHADO);
-    servo2.write(ANGULO_FECHADO);
-    servo3.write(ANGULO_FECHADO);
-
-    delay(500);
-  }
-
-  // Corta o sinal elétrico dos servos
-  servo1.detach();
-  servo2.detach();
-  servo3.detach();
-
-  estadoPorta = 0;
-  cicloPortaOcupado = false;
+void ativarPortaEmergencia(int andar) {
+  setAlertaObstrucao(false);
+  Servo* s = getServoAndar(andar);
+  s->write(ANGULO_ABERTO); // Deixa a porta aberta na emergência para evacuação
+  delay(500);
+  s->detach(); // Desativa o servo para poder abrir manualmente se preciso
 }
 
-// Fecha todas as portas com segurança ao restaurar do modo de emergência
-void restaurarPortasAposEmergencia(int andarAtual) {
-  servo1.attach(PIN_SERVO1);
-  servo2.attach(PIN_SERVO2);
-  servo3.attach(PIN_SERVO3);
-
-  servo1.write(ANGULO_FECHADO);
-  servo2.write(ANGULO_FECHADO);
-  servo3.write(ANGULO_FECHADO);
-
-  delay(1000); // Aguarda o movimento físico de fechamento
-
-  estadoPorta = 0;
-  cicloPortaOcupado = false;
+void restaurarPortasAposEmergencia(int andar) {
+  Servo* s = getServoAndar(andar);
+  s->attach(andar == 1 ? SERVO_P1 : (andar == 2 ? SERVO_P2 : SERVO_P3));
+  s->write(ANGULO_FECHADO);
+  estadoAtualPorta = PORTA_FECHADA;
 }
