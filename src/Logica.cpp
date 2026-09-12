@@ -15,16 +15,15 @@ int andarDestino = 0;
 int estado = 0;
 int direcaoAtual = 0;
 
-// Filtro de leitura: faz 5 amostragens no pino para evitar falsos negativos na partida
 bool lerSensorComFiltro(int pino) {
   int contagemLow = 0;
   for (int i = 0; i < 5; i++) {
     if (digitalRead(pino) == LOW) {
       contagemLow++;
     }
-    delay(10); // Intervalo para estabilização de leitura
+    delay(10);
   }
-  return (contagemLow >= 4); // Considera ativo se pelo menos 4 leituras forem LOW
+  return (contagemLow >= 4);
 }
 
 bool sensorAtivo(int andar) {
@@ -35,7 +34,6 @@ bool sensorAtivo(int andar) {
 }
 
 void detectarAndarInicial() {
-  // Tempo para alimentação elétrica dos sensores estabilizar totalmente
   delay(200);
 
   if (lerSensorComFiltro(S1)) {
@@ -48,7 +46,6 @@ void detectarAndarInicial() {
     andarAtual = 3;
     andarDestino = 3;
   } else {
-    // Caso esteja parado entre dois andares
     andarAtual = 1;
     andarDestino = 1;
   }
@@ -59,19 +56,16 @@ void initBtsESensores() {
   pinMode(S2, INPUT_PULLUP);
   pinMode(S3, INPUT_PULLUP);
 
-  // Executa a leitura filtrada do andar no momento da energização
   detectarAndarInicial();
 
   Wire.begin();
 
-  // Inicializa o PCF8574
   Wire.beginTransmission(PCF_ADDR);
   Wire.write(0b01101101);
   Wire.endTransmission();
 }
 
 void atualizarLedsBotoes() {
-  // Cancela a chamada ao atingir o sensor do andar
   for (int i = 1; i <= 3; i++) {
     if (sensorAtivo(i)) {
       chamada[i] = false;
@@ -80,9 +74,9 @@ void atualizarLedsBotoes() {
 
   uint8_t bytePCF = 0b01101101; 
 
-  if (chamada[1]) bytePCF |= (1 << 1); // LED 1
-  if (chamada[2]) bytePCF |= (1 << 4); // LED 2
-  if (chamada[3]) bytePCF |= (1 << 7); // LED 3
+  if (chamada[1]) bytePCF |= (1 << 1);
+  if (chamada[2]) bytePCF |= (1 << 4);
+  if (chamada[3]) bytePCF |= (1 << 7);
 
   Wire.beginTransmission(PCF_ADDR);
   Wire.write(bytePCF);

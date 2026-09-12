@@ -4,13 +4,14 @@
 #include "Logica.h"
 #include "Motor.h"
 #include "Portas.h"
+#include "DingDong.h"
 #include <Arduino.h>
 #include <LiquidCrystal_I2C.h>
 #include <Wire.h>
 
 unsigned long tempoParada = 0;
 bool comandoPortaEnviado = false;
-bool emergenciasTratadas = false; // Flag para transição de emergência
+bool emergenciasTratadas = false;
 int estadoAnteriorLog = -1;
 
 void setup() {
@@ -19,13 +20,14 @@ void setup() {
   lcdInit();
   EmergenciaInit();
   inicializarPortas();
-  BluetoothInit(); // Inicializa comunicação HC-05
+  BluetoothInit();
+  initDingDong(); // Inicializa o pino A3 do Buzzer
 }
 
 void loop() {
+  atualizarDingDong(); // Executa o áudio sem travar o processador
   atualizarRampaMotor();
   
-  // Processa entrada e saída de dados do Bluetooth
   lerComandosBluetooth();
   atualizarInterfaceBluetooth();
 
@@ -35,17 +37,18 @@ void loop() {
     
     // SE ACABOU DE SAIR DA EMERGÊNCIA:
     if (emergenciasTratadas == true) { 
-      pararMotor(); // Garante motor parado
-      restaurarPortasAposEmergencia(andarAtual); // Reativa os servos e FECHA as portas
+      pararMotor();
+      setSireneEmergencia(false); // Desliga a sirene de emergência
+      restaurarPortasAposEmergencia(andarAtual);
       telaEmergenciaEscrita = false; 
-      desligarLedReset(); // Apaga o LED de reset e garante backlight ligado                  
-      emergenciasTratadas = false;       // Reseta a flag de emergência
-      estado = 0;                        // Volta para o estado PARADO
+      desligarLedReset();
+      emergenciasTratadas = false;
+      estado = 0;
       enviarLog("Emergência normalizada. Elevador pronto.");
     }
 
     lerBotoes();
-    atualizarLedsBotoes(); // Garante atualização contínua dos LEDs via PCF8574
+    atualizarLedsBotoes();
 
     // ------------------ MÁQUINA DE ESTADOS DO ELEVADOR ------------------
     if (estado == 0) { // --------- PARADO ---------
@@ -56,16 +59,13 @@ void loop() {
         estadoAnteriorLog = 0;
       }
 
-      // Se houver chamada no próprio andar atual, abre a porta
       if (chamada[andarAtual] == true) {
         chamada[andarAtual] = false; 
         comandoPortaEnviado = false; 
         estado = 2;                  
       } else {
-        // Busca o próximo andar desejado
         andarDestino = escolherProximoAndar();
         
-        // SÓ ENTRA EM MOVIMENTO SE HOUVER UMA CHAMADA VÁLIDA (diferente de 0 e do andar atual)
         if (andarDestino != 0 && andarDestino != andarAtual) {
           estado = 1; 
         }
@@ -97,7 +97,6 @@ void loop() {
         }
       }
 
-      // Chegou ao destino ou há uma chamada pendente no andar em que acabou de passar
       if ((andarAtual == andarDestino && sensorAtivo(andarDestino)) ||
           (chamada[andarAtual] && sensorAtivo(andarAtual))) {
 
@@ -118,12 +117,13 @@ void loop() {
 
       if (!comandoPortaEnviado) {
         comandarAberturaPorta(andarAtual); 
+        tocarDingDong(); // Toca o som de chegada imediatamente ao abrir a porta
         comandoPortaEnviado = true;
       }
 
       if (portaEstaTotalmenteFechada()) {
         chamada[andarAtual] = false; 
-        estado = 0; // Retorna para PARADO
+        estado = 0;
       }
     }
 
@@ -131,15 +131,15 @@ void loop() {
     // ------------------ MODO EMERGÊNCIA ATIVO ------------------
     
     if (emergenciasTratadas == false) {
-      pararMotor();                               // Interrompe a subida/descida
-      ativarPortaEmergencia(andarAtual); // Abre a porta se estiver no andar e desativa os servos
-      emergenciasTratadas = true;         // Executa a transição apenas uma vez
+      pararMotor();
+      ativarPortaEmergencia(andarAtual);
+      emergenciasTratadas = true;
       enviarLog("PERIGO: Emergência Ativada!");
       estadoAnteriorLog = -1;
     }
 
     rotinaSeguranca();
     lcdEmergencia();
-    atualizarLedsBotoes(); // Mantém o estado correto dos LEDs mesmo na emergência
+    atualizarLedsBotoes();
   }
 }
