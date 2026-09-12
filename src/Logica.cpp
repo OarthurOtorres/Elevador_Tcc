@@ -1,93 +1,109 @@
 #include "Logica.h"
 #include <Arduino.h>
-#include <PCF8574.h>
 #include <Wire.h>
 
-// Instância do PCF8574 no endereço I2C 0x27
-PCF8574 pcf(0x27);
+#define PCF_ADDR 0x27
 
-// Mapeamento dos pinos no PCF8574 para os botões e LEDs do elevador
-#define PCF_BT1  0
-#define PCF_LED1 1
-
-#define PCF_BT2  3
-#define PCF_LED2 4
-
-#define PCF_BT3  6
-#define PCF_LED3 7
-
-// Sensores Hall de posição (Arduino)
 #define S1 5
 #define S2 6
 #define S3 7
 
 bool chamada[4] = {false, false, false, false};
-int andarAtual = 1;
-int andarDestino = 1;
+
+int andarAtual = 0;
+int andarDestino = 0;
 int estado = 0;
 int direcaoAtual = 0;
 
+// Filtro de leitura: faz 5 amostragens no pino para evitar falsos negativos na partida
+bool lerSensorComFiltro(int pino) {
+  int contagemLow = 0;
+  for (int i = 0; i < 5; i++) {
+    if (digitalRead(pino) == LOW) {
+      contagemLow++;
+    }
+    delay(10); // Intervalo para estabilização de leitura
+  }
+  return (contagemLow >= 4); // Considera ativo se pelo menos 4 leituras forem LOW
+}
+
+bool sensorAtivo(int andar) {
+  if (andar == 1) return digitalRead(S1) == LOW;
+  if (andar == 2) return digitalRead(S2) == LOW;
+  if (andar == 3) return digitalRead(S3) == LOW;
+  return false;
+}
+
+void detectarAndarInicial() {
+  // Tempo para alimentação elétrica dos sensores estabilizar totalmente
+  delay(200);
+
+  if (lerSensorComFiltro(S1)) {
+    andarAtual = 1;
+    andarDestino = 1;
+  } else if (lerSensorComFiltro(S2)) {
+    andarAtual = 2;
+    andarDestino = 2;
+  } else if (lerSensorComFiltro(S3)) {
+    andarAtual = 3;
+    andarDestino = 3;
+  } else {
+    // Caso esteja parado entre dois andares
+    andarAtual = 1;
+    andarDestino = 1;
+  }
+}
+
 void initBtsESensores() {
-  // Configuração dos Sensores Hall no Arduino
   pinMode(S1, INPUT_PULLUP);
   pinMode(S2, INPUT_PULLUP);
   pinMode(S3, INPUT_PULLUP);
 
-  // Configuração dos Pinos no PCF8574
-  pcf.pinMode(PCF_BT1, INPUT_PULLUP);
-  pcf.pinMode(PCF_BT2, INPUT_PULLUP);
-  pcf.pinMode(PCF_BT3, INPUT_PULLUP);
+  // Executa a leitura filtrada do andar no momento da energização
+  detectarAndarInicial();
 
-  pcf.pinMode(PCF_LED1, OUTPUT);
-  pcf.pinMode(PCF_LED2, OUTPUT);
-  pcf.pinMode(PCF_LED3, OUTPUT);
+  Wire.begin();
 
-  // Inicializa os LEDs apagados (Nível HIGH desliga no modo Sink do PCF)
-  pcf.digitalWrite(PCF_LED1, HIGH);
-  pcf.digitalWrite(PCF_LED2, HIGH);
-  pcf.digitalWrite(PCF_LED3, HIGH);
+  // Inicializa o PCF8574
+  Wire.beginTransmission(PCF_ADDR);
+  Wire.write(0b01101101);
+  Wire.endTransmission();
+}
 
-  pcf.begin();
+void atualizarLedsBotoes() {
+  // Cancela a chamada ao atingir o sensor do andar
+  for (int i = 1; i <= 3; i++) {
+    if (sensorAtivo(i)) {
+      chamada[i] = false;
+    }
+  }
+
+  uint8_t bytePCF = 0b01101101; 
+
+  if (chamada[1]) bytePCF |= (1 << 1); // LED 1
+  if (chamada[2]) bytePCF |= (1 << 4); // LED 2
+  if (chamada[3]) bytePCF |= (1 << 7); // LED 3
+
+  Wire.beginTransmission(PCF_ADDR);
+  Wire.write(bytePCF);
+  Wire.endTransmission();
 }
 
 void lerBotoes() {
-  // Leitura com filtro Debounce via PCF8574
-  if (pcf.digitalRead(PCF_BT1) == LOW) {
-    delay(50);
-    if (pcf.digitalRead(PCF_BT1) == LOW) {
-      chamada[1] = true;
-    }
-  }
+  Wire.requestFrom((uint8_t)PCF_ADDR, (uint8_t)1);
+  if (!Wire.available()) return;
 
-  if (pcf.digitalRead(PCF_BT2) == LOW) {
-    delay(50);
-    if (pcf.digitalRead(PCF_BT2) == LOW) {
-      chamada[2] = true;
-    }
-  }
+  uint8_t leitura = Wire.read();
 
-  if (pcf.digitalRead(PCF_BT3) == LOW) {
-    delay(50);
-    if (pcf.digitalRead(PCF_BT3) == LOW) {
-      chamada[3] = true;
-    }
-  }
+  bool bt1Pressionado = !(leitura & (1 << 0));
+  bool bt2Pressionado = !(leitura & (1 << 3));
+  bool bt3Pressionado = !(leitura & (1 << 6));
 
-  // Atualiza as saídas dos LEDs imediatamente após a leitura
+  if (bt1Pressionado && !sensorAtivo(1)) chamada[1] = true;
+  if (bt2Pressionado && !sensorAtivo(2)) chamada[2] = true;
+  if (bt3Pressionado && !sensorAtivo(3)) chamada[3] = true;
+
   atualizarLedsBotoes();
-}
-
-// Acende o LED quando a chamada é registrada e apaga quando o sensor Hall do andar é ativado
-void atualizarLedsBotoes() {
-  // Reseta a chamada assim que a cabine ativa o sensor Hall do andar correspondente
-  if (sensorAtivo(1)) chamada[1] = false;
-  if (sensorAtivo(2)) chamada[2] = false;
-  if (sensorAtivo(3)) chamada[3] = false;
-
-  // Atualiza os LEDs (LOW = Liga / HIGH = Desliga)
-  pcf.digitalWrite(PCF_LED1, chamada[1] ? LOW : HIGH);
-  pcf.digitalWrite(PCF_LED2, chamada[2] ? LOW : HIGH);
-  pcf.digitalWrite(PCF_LED3, chamada[3] ? LOW : HIGH);
 }
 
 int escolherProximoAndar() {
@@ -120,12 +136,5 @@ int escolherProximoAndar() {
     }
   }
 
-  return andarAtual;
-}
-
-bool sensorAtivo(int andar) {
-  if (andar == 1) return digitalRead(S1) == LOW;
-  if (andar == 2) return digitalRead(S2) == LOW;
-  if (andar == 3) return digitalRead(S3) == LOW;
-  return false;
+  return 0;
 }

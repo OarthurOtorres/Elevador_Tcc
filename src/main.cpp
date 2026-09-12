@@ -35,11 +35,10 @@ void loop() {
     
     // SE ACABOU DE SAIR DA EMERGÊNCIA:
     if (emergenciasTratadas == true) { 
-      pararMotor();                               // Garante motor parado
+      pararMotor(); // Garante motor parado
       restaurarPortasAposEmergencia(andarAtual); // Reativa os servos e FECHA as portas
       telaEmergenciaEscrita = false; 
-      lcd.backlight();               
-      lcd.clear();                   
+      desligarLedReset(); // Apaga o LED de reset e garante backlight ligado                  
       emergenciasTratadas = false;       // Reseta a flag de emergência
       estado = 0;                        // Volta para o estado PARADO
       enviarLog("Emergência normalizada. Elevador pronto.");
@@ -57,13 +56,17 @@ void loop() {
         estadoAnteriorLog = 0;
       }
 
+      // Se houver chamada no próprio andar atual, abre a porta
       if (chamada[andarAtual] == true) {
         chamada[andarAtual] = false; 
         comandoPortaEnviado = false; 
         estado = 2;                  
       } else {
+        // Busca o próximo andar desejado
         andarDestino = escolherProximoAndar();
-        if (andarDestino != andarAtual) {
+        
+        // SÓ ENTRA EM MOVIMENTO SE HOUVER UMA CHAMADA VÁLIDA (diferente de 0 e do andar atual)
+        if (andarDestino != 0 && andarDestino != andarAtual) {
           estado = 1; 
         }
       }
@@ -94,6 +97,7 @@ void loop() {
         }
       }
 
+      // Chegou ao destino ou há uma chamada pendente no andar em que acabou de passar
       if ((andarAtual == andarDestino && sensorAtivo(andarDestino)) ||
           (chamada[andarAtual] && sensorAtivo(andarAtual))) {
 
@@ -119,7 +123,7 @@ void loop() {
 
       if (portaEstaTotalmenteFechada()) {
         chamada[andarAtual] = false; 
-        estado = 0; 
+        estado = 0; // Retorna para PARADO
       }
     }
 

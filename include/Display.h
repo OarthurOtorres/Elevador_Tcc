@@ -1,6 +1,7 @@
 #ifndef Display_h
 #define Display_h
 
+
 #include <LiquidCrystal_I2C.h>
 #include <Wire.h>
 
@@ -17,5 +18,6 @@ void lcdSubindo();
 void lcdDescendo();
 void lcdChegou();
 void lcdEmergencia();
+void desligarLedReset();
 
 #endif

@@ -6,6 +6,7 @@
 // Pino do botão de emergência (INPUT_PULLUP)
 #define BtEmergencia 2
 #define BtReset 3
+// Led Reset pisca está no Display.cpp
 
 // Variável para armazenar o estado do botão de emergência
 volatile bool emergenciaAtivada = false;
@@ -16,6 +17,7 @@ void EmergenciaInit() {
   attachInterrupt(digitalPinToInterrupt(BtEmergencia), ParadaEmergencia, FALLING);
   pinMode(BtReset, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(BtReset), ResetEmergencia, FALLING);
+  
 }
 
 // Funcão chamada quando o botão de emergência é pressionado, ativando a variável de emergência
@@ -23,8 +25,8 @@ void ParadaEmergencia() { emergenciaAtivada = true; }
 
 // Funcão chamada quando o botão de reset é pressionado, desativando a variável de emergência
 void ResetEmergencia() {
-    if(digitalRead(BtEmergencia)) { // Verifica se o botão de emergência ainda está pressionado, pra poder resetar a emergência
-        emergenciaAtivada = false;
+    if(digitalRead(BtEmergencia)) { // Verifica se o botão de emergência ainda está pressionado, pra poder resetar a emergência 
+      emergenciaAtivada = false;
     }
     
 }

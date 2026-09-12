@@ -5,7 +5,7 @@
 #include <Wire.h>
 
 // Inicializa o display LCD no endereço 0x20 com 16 colunas e 2 linhas
-LiquidCrystal_I2C lcd(0x20, 16, 2);
+LiquidCrystal_I2C lcd(0x25, 16, 2);
 
 // Variáveis para controlar o piscar do backlight em caso de emergência 
 unsigned long tempoPiscaEmergencia = 0;
@@ -13,6 +13,8 @@ bool estadoPiscaEmergencia = false;
 
 // Controla o número de escritas no display em caso de emergência para evitar sobrecarga
 bool telaEmergenciaEscrita = false;
+
+#define LedReset 4 //Led do Reset piscante
 
 // Função auxiliar interna para descobrir a próxima parada imediata no caminho
 int obterProximaParada() {
@@ -38,6 +40,8 @@ void lcdInit() {
   lcd.print("   TCC PRONTO   ");
   delay(2000);
   lcd.clear();
+  pinMode(LedReset, OUTPUT); // Configura o pino do LED de reset como saída
+  digitalWrite(LedReset, LOW); // Inicializa o LED de reset como apagado
 }
 
 // Mostra o status atual e onde o elevador está estacionado
@@ -102,8 +106,17 @@ void lcdEmergencia() {
     
     if (estadoPiscaEmergencia) {
       lcd.backlight();
+      digitalWrite(LedReset, HIGH); // Acende o LED de reset quando o backlight está ligado
     } else {
       lcd.noBacklight();
+      digitalWrite(LedReset, LOW); // Apaga o LED de reset quando o backlight está desligado
     }
   }
+
 }
+
+void desligarLedReset() {
+    digitalWrite(LedReset, LOW); // Garante que o LED de reset esteja apagado
+    lcd.backlight();
+    lcd.clear();
+  }
