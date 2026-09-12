@@ -3,16 +3,18 @@
 #include <Arduino.h>
 #include <Servo.h>
 
-// Pino do sensor IR no D8 (INPUT_PULLUP)
-#define SENSOR_IV_PIN 8 
+// ============================================================================
+// MAPA DE PINOS REAIS DO SEU HARDWARE
+// ============================================================================
+#define SENSOR_IV_PIN 8   // Pino do Sensor IR
 
-// Pinos dos Servos das Portas
-#define SERVO_P1 11
-#define SERVO_P2 12
-#define SERVO_P3 13
+#define SERVO_P1 A0       // Servo Porta 1º Andar
+#define SERVO_P2 A1       // Servo Porta 2º Andar
+#define SERVO_P3 A2       // Servo Porta 3º Andar
 
 #define ANGULO_FECHADO 0
 #define ANGULO_ABERTO  90
+// ============================================================================
 
 enum EstadoPorta {
   PORTA_FECHADA,
@@ -37,17 +39,17 @@ Servo* getServoAndar(int andar) {
   return &servoP1;
 }
 
-// Com INPUT_PULLUP: Sem obstáculo = HIGH | Com obstáculo (bloqueado) = LOW
 bool sensorObstaculoAtivo() {
   return (digitalRead(SENSOR_IV_PIN) == LOW);
 }
 
 void inicializarPortas() {
-  pinMode(SENSOR_IV_PIN, INPUT_PULLUP); // Pino 8 configurado com pull-up interno
+  pinMode(SENSOR_IV_PIN, INPUT_PULLUP);
 
-  servoP1.attach(SERVO_P1);
-  servoP2.attach(SERVO_P2);
-  servoP3.attach(SERVO_P3);
+  // Anexa os servos nos pinos analógicos (A0, A1, A2 funcionam perfeitamente como PWM de servo)
+  servoP1.attach(SERVO_P1, 500, 2500);
+  servoP2.attach(SERVO_P2, 500, 2500);
+  servoP3.attach(SERVO_P3, 500, 2500);
 
   servoP1.write(ANGULO_FECHADO);
   servoP2.write(ANGULO_FECHADO);
@@ -64,7 +66,8 @@ void comandarAberturaPorta(int andar) {
 
   Servo* s = getServoAndar(andarAtualPorta);
   if (!s->attached()) {
-    s->attach(andar == 1 ? SERVO_P1 : (andar == 2 ? SERVO_P2 : SERVO_P3));
+    int pino = (andar == 1 ? SERVO_P1 : (andar == 2 ? SERVO_P2 : SERVO_P3));
+    s->attach(pino, 500, 2500);
   }
   s->write(ANGULO_ABERTO);
 }
@@ -81,7 +84,9 @@ void gerenciarMaquinaPortas() {
       break;
 
     case PORTA_ABRINDO:
-      if (agora - tempoInicioEstado >= 1000) { // 1s para abrir
+      getServoAndar(andarAtualPorta)->write(ANGULO_ABERTO);
+
+      if (agora - tempoInicioEstado >= 1200) { 
         estadoAtualPorta = PORTA_ABERTA;
         tempoInicioEstado = agora;
         tempoInicioObstrucao = 0;
@@ -90,23 +95,19 @@ void gerenciarMaquinaPortas() {
 
     case PORTA_ABERTA:
       if (haObstaculo) {
-        // Zera o cronômetro da porta: não fecha enquanto houver pessoa na passagem
         tempoInicioEstado = agora; 
 
         if (tempoInicioObstrucao == 0) {
           tempoInicioObstrucao = agora;
         }
 
-        // Se a passagem continuar bloqueada por 4 segundos, dispara a sirene
         if (agora - tempoInicioObstrucao >= 4000) {
           setAlertaObstrucao(true);
         }
       } else {
-        // Passagem livre: reseta o alarme
         tempoInicioObstrucao = 0;
         setAlertaObstrucao(false);
 
-        // Aguarda 3 segundos de passagem livre para começar a fechar
         if (agora - tempoInicioEstado >= 3000) {
           estadoAtualPorta = PORTA_FECHANDO;
           tempoInicioEstado = agora;
@@ -118,8 +119,9 @@ void gerenciarMaquinaPortas() {
       break;
 
     case PORTA_FECHANDO:
-      // REABERTURA ANTI-ESMAGAMENTO
-      if (haObstaculo) {
+      getServoAndar(andarAtualPorta)->write(ANGULO_FECHADO);
+
+      if (haObstaculo) { // Reabertura de emergência se alguém passar na porta
         estadoAtualPorta = PORTA_ABRINDO;
         tempoInicioEstado = agora;
         tempoInicioObstrucao = agora;
@@ -130,7 +132,7 @@ void gerenciarMaquinaPortas() {
         break;
       }
 
-      if (agora - tempoInicioEstado >= 1000) { // 1s para concluir fechamento
+      if (agora - tempoInicioEstado >= 1200) { 
         estadoAtualPorta = PORTA_FECHADA;
         setAlertaObstrucao(false);
         tempoInicioObstrucao = 0;
@@ -153,7 +155,8 @@ void ativarPortaEmergencia(int andar) {
 
 void restaurarPortasAposEmergencia(int andar) {
   Servo* s = getServoAndar(andar);
-  s->attach(andar == 1 ? SERVO_P1 : (andar == 2 ? SERVO_P2 : SERVO_P3));
+  int pino = (andar == 1 ? SERVO_P1 : (andar == 2 ? SERVO_P2 : SERVO_P3));
+  s->attach(pino, 500, 2500);
   s->write(ANGULO_FECHADO);
   estadoAtualPorta = PORTA_FECHADA;
 }
