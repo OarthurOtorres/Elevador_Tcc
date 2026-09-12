@@ -12,7 +12,6 @@ static int freqSirene = 400;
 static bool subindoSirene = true;
 static unsigned long tempoSirene = 0;
 
-// Variáveis do Alerta de Obstrução da Porta
 static bool alertaObstrucao = false;
 static unsigned long tempoAlerta = 0;
 static bool bipAlertaLigado = false;
@@ -54,7 +53,7 @@ void setAlertaObstrucao(bool ativo) {
 void atualizarDingDong() {
   unsigned long agora = millis();
 
-  // --- PRIORIDADE 1: SIRENE DE EMERGÊNCIA ---
+  // PRIORIDADE 1: SIRENE DE EMERGÊNCIA
   if (sireneAtiva) {
     if (agora - tempoSirene >= 5) {
       tempoSirene = agora;
@@ -71,14 +70,14 @@ void atualizarDingDong() {
     return;
   }
 
-  // --- PRIORIDADE 2: ALERTA DE OBSTRUÇÃO DA PORTA (Bip Intermitente) ---
+  // PRIORIDADE 2: ALERTA DE OBSTRUÇÃO DA PORTA
   if (alertaObstrucao) {
-    if (agora - tempoAlerta >= 250) { // Alterna a cada 250ms
+    if (agora - tempoAlerta >= 250) {
       tempoAlerta = agora;
       bipAlertaLigado = !bipAlertaLigado;
 
       if (bipAlertaLigado) {
-        tone(BUZZER_PIN, 1800); // Tom agudo de alerta
+        tone(BUZZER_PIN, 1800);
       } else {
         noTone(BUZZER_PIN);
       }
@@ -86,7 +85,7 @@ void atualizarDingDong() {
     return;
   }
 
-  // --- PRIORIDADE 3: CAMPAINHA DING-DONG ---
+  // PRIORIDADE 3: CAMPAINHA DING-DONG
   switch (estadoDD) {
     case DD_DING:
       if (agora - tempoDD >= 300) {

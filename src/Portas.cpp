@@ -3,19 +3,17 @@
 #include <Arduino.h>
 #include <Servo.h>
 
-// Definir o pino do Sensor IR (Módulo FC-51 / TCRT5000)
-#define SENSOR_IV_PIN 8
+// Pino do sensor IR no D8 (INPUT_PULLUP)
+#define SENSOR_IV_PIN 8 
 
-// Pinos dos Servos das Portas (Ajuste se seus pinos forem diferentes)
+// Pinos dos Servos das Portas
 #define SERVO_P1 11
 #define SERVO_P2 12
 #define SERVO_P3 13
 
-// Ângulos dos Servos
 #define ANGULO_FECHADO 0
 #define ANGULO_ABERTO  90
 
-// Estados da Porta
 enum EstadoPorta {
   PORTA_FECHADA,
   PORTA_ABRINDO,
@@ -27,16 +25,10 @@ static EstadoPorta estadoAtualPorta = PORTA_FECHADA;
 static int andarAtualPorta = 1;
 static unsigned long tempoInicioEstado = 0;
 static unsigned long tempoInicioObstrucao = 0;
-static bool obstruindoAnterior = false;
 
 Servo servoP1;
 Servo servoP2;
 Servo servoP3;
-
-// Módulo FC-51: Saída LOW (0) significa OBSTÁCULO DETECTADO
-bool sensorObstaculoAtivo() {
-  return (digitalRead(SENSOR_IV_PIN) == LOW);
-}
 
 Servo* getServoAndar(int andar) {
   if (andar == 1) return &servoP1;
@@ -45,8 +37,13 @@ Servo* getServoAndar(int andar) {
   return &servoP1;
 }
 
+// Com INPUT_PULLUP: Sem obstáculo = HIGH | Com obstáculo (bloqueado) = LOW
+bool sensorObstaculoAtivo() {
+  return (digitalRead(SENSOR_IV_PIN) == LOW);
+}
+
 void inicializarPortas() {
-  pinMode(SENSOR_IV_PIN, INPUT);
+  pinMode(SENSOR_IV_PIN, INPUT_PULLUP); // Pino 8 configurado com pull-up interno
 
   servoP1.attach(SERVO_P1);
   servoP2.attach(SERVO_P2);
@@ -63,9 +60,12 @@ void comandarAberturaPorta(int andar) {
   andarAtualPorta = andar;
   estadoAtualPorta = PORTA_ABRINDO;
   tempoInicioEstado = millis();
+  tempoInicioObstrucao = 0;
 
   Servo* s = getServoAndar(andarAtualPorta);
-  if (!s->attached()) s->attach(andar == 1 ? SERVO_P1 : (andar == 2 ? SERVO_P2 : SERVO_P3));
+  if (!s->attached()) {
+    s->attach(andar == 1 ? SERVO_P1 : (andar == 2 ? SERVO_P2 : SERVO_P3));
+  }
   s->write(ANGULO_ABERTO);
 }
 
@@ -77,32 +77,36 @@ void gerenciarMaquinaPortas() {
     
     case PORTA_FECHADA:
       setAlertaObstrucao(false);
+      tempoInicioObstrucao = 0;
       break;
 
     case PORTA_ABRINDO:
-      // Aguarda tempo do movimento do servo (1 segundo para abrir)
-      if (agora - tempoInicioEstado >= 1000) {
+      if (agora - tempoInicioEstado >= 1000) { // 1s para abrir
         estadoAtualPorta = PORTA_ABERTA;
         tempoInicioEstado = agora;
-        tempoInicioObstrucao = agora;
+        tempoInicioObstrucao = 0;
       }
       break;
 
     case PORTA_ABERTA:
       if (haObstaculo) {
-        // Reinicia o tempo de espera de fechamento enquanto alguém estiver na porta
+        // Zera o cronômetro da porta: não fecha enquanto houver pessoa na passagem
         tempoInicioEstado = agora; 
 
-        // Se o obstáculo persistir por mais de 4 segundos, dispara alerta sonoro
+        if (tempoInicioObstrucao == 0) {
+          tempoInicioObstrucao = agora;
+        }
+
+        // Se a passagem continuar bloqueada por 4 segundos, dispara a sirene
         if (agora - tempoInicioObstrucao >= 4000) {
           setAlertaObstrucao(true);
         }
       } else {
-        // Sem obstáculo: reseta o tempo de obstrução e desliga alerta
-        tempoInicioObstrucao = agora;
+        // Passagem livre: reseta o alarme
+        tempoInicioObstrucao = 0;
         setAlertaObstrucao(false);
 
-        // Após 3 segundos sem ninguém na porta, começa a fechar
+        // Aguarda 3 segundos de passagem livre para começar a fechar
         if (agora - tempoInicioEstado >= 3000) {
           estadoAtualPorta = PORTA_FECHANDO;
           tempoInicioEstado = agora;
@@ -114,23 +118,22 @@ void gerenciarMaquinaPortas() {
       break;
 
     case PORTA_FECHANDO:
-      // REABERTURA INSTANTÂNEA ANTI-ESMAGAMENTO:
+      // REABERTURA ANTI-ESMAGAMENTO
       if (haObstaculo) {
-        // Alguém colocou a mão/corpo durante o fechamento!
-        // Inverte a porta imediatamente para ABRINDO
         estadoAtualPorta = PORTA_ABRINDO;
         tempoInicioEstado = agora;
         tempoInicioObstrucao = agora;
+        setAlertaObstrucao(false);
 
         Servo* s = getServoAndar(andarAtualPorta);
         s->write(ANGULO_ABERTO);
         break;
       }
 
-      // Conclui o fechamento após 1 segundo
-      if (agora - tempoInicioEstado >= 1000) {
+      if (agora - tempoInicioEstado >= 1000) { // 1s para concluir fechamento
         estadoAtualPorta = PORTA_FECHADA;
         setAlertaObstrucao(false);
+        tempoInicioObstrucao = 0;
       }
       break;
   }
@@ -143,9 +146,9 @@ bool portaEstaTotalmenteFechada() {
 void ativarPortaEmergencia(int andar) {
   setAlertaObstrucao(false);
   Servo* s = getServoAndar(andar);
-  s->write(ANGULO_ABERTO); // Deixa a porta aberta na emergência para evacuação
+  s->write(ANGULO_ABERTO);
   delay(500);
-  s->detach(); // Desativa o servo para poder abrir manualmente se preciso
+  s->detach();
 }
 
 void restaurarPortasAposEmergencia(int andar) {

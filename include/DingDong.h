@@ -4,7 +4,7 @@
 void initDingDong();
 void tocarDingDong();
 void setSireneEmergencia(bool ativa);
-void setAlertaObstrucao(bool ativo); // Novo alerta sonoro
+void setAlertaObstrucao(bool ativo);
 void atualizarDingDong();
 
 #endif

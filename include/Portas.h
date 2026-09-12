@@ -7,6 +7,6 @@ void gerenciarMaquinaPortas();
 bool portaEstaTotalmenteFechada();
 void ativarPortaEmergencia(int andar);
 void restaurarPortasAposEmergencia(int andar);
-bool sensorObstaculoAtivo(); // Retorna true se houver objeto no sensor IR
+bool sensorObstaculoAtivo();
 
 #endif
