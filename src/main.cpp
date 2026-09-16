@@ -16,11 +16,11 @@ int estadoAnteriorLog = -1;
 
 void setup() {
   inicializarMotor();
-  initBtsESensores();
-  lcdInit();
+  BluetoothInit();      // 1. Inicializa o Bluetooth primeiro para os logs do Homing
+  lcdInit();            // 2. Inicializa o LCD antes do Homing para exibir "REFERENC"
+  initBtsESensores();   // 3. Agora o Homing pode usar a tela LCD e o Bluetooth
   EmergenciaInit();
   inicializarPortas();
-  BluetoothInit();
   initDingDong();
 }
 
@@ -39,8 +39,7 @@ void loop() {
       pararMotor();
       setSireneEmergencia(false);
       restaurarPortasAposEmergencia(andarAtual);
-      telaEmergenciaEscrita = false; 
-      desligarLedReset();
+      desligarLedReset(); // Já zera a telaEmergenciaEscrita internamente no Display.cpp
       emergenciasTratadas = false;
       estado = 0;
       enviarLog("Emergência normalizada. Elevador pronto.");

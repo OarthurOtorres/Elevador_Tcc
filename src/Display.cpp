@@ -4,7 +4,7 @@
 #include <LiquidCrystal_I2C.h>
 #include <Wire.h>
 
-// Inicializa o display LCD no endereço 0x20 com 16 colunas e 2 linhas
+// Inicializa o display LCD no endereço 0x25 com 16 colunas e 2 linhas
 LiquidCrystal_I2C lcd(0x25, 16, 2);
 
 // Variáveis para controlar o piscar do backlight em caso de emergência 
@@ -14,7 +14,7 @@ bool estadoPiscaEmergencia = false;
 // Controla o número de escritas no display em caso de emergência para evitar sobrecarga
 bool telaEmergenciaEscrita = false;
 
-#define LedReset 4 //Led do Reset piscante
+#define LedReset 4 // Led do Reset piscante
 
 // Função auxiliar interna para descobrir a próxima parada imediata no caminho
 int obterProximaParada() {
@@ -40,8 +40,16 @@ void lcdInit() {
   lcd.print("   TCC PRONTO   ");
   delay(2000);
   lcd.clear();
-  pinMode(LedReset, OUTPUT); // Configura o pino do LED de reset como saída
-  digitalWrite(LedReset, LOW); // Inicializa o LED de reset como apagado
+  pinMode(LedReset, OUTPUT);    // Configura o pino do LED de reset como saída
+  digitalWrite(LedReset, LOW);  // Inicializa o LED de reset como apagado
+}
+
+// NOVO: Mostra status durante a busca de referência/homing
+void lcdReferenciando() {
+  lcd.setCursor(0, 0);
+  lcd.print("STATUS: DESCENDO  ");
+  lcd.setCursor(0, 1);
+  lcd.print("REFERENCIANDO "); // 16 caracteres para limpar toda a linha
 }
 
 // Mostra o status atual e onde o elevador está estacionado
@@ -54,7 +62,7 @@ void lcdParado() {
   lcd.print("   "); // Espaços para limpar a linha
 }
 
-// Mostra a rota dinâmica subindo (ex: "1 -> 2" se o 2 for chamado antes de chegar no 3)
+// Mostra a rota dinâmica subindo
 void lcdSubindo() {
   lcd.setCursor(0, 0);
   lcd.print("STATUS: SUBINDO ");
@@ -109,14 +117,14 @@ void lcdEmergencia() {
       digitalWrite(LedReset, HIGH); // Acende o LED de reset quando o backlight está ligado
     } else {
       lcd.noBacklight();
-      digitalWrite(LedReset, LOW); // Apaga o LED de reset quando o backlight está desligado
+      digitalWrite(LedReset, LOW);  // Apaga o LED de reset quando o backlight está desligado
     }
   }
-
 }
 
 void desligarLedReset() {
-    digitalWrite(LedReset, LOW); // Garante que o LED de reset esteja apagado
-    lcd.backlight();
-    lcd.clear();
-  }
+  digitalWrite(LedReset, LOW); // Garante que o LED de reset esteja apagado
+  telaEmergenciaEscrita = false; // Permite que uma nova tela de emergência seja montada se necessário
+  lcd.backlight();
+  lcd.clear();
+}

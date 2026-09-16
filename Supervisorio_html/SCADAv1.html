@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supervisório SCADA - Elevador TCC</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background-color: #121214;
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
+            width: 100vw;
+            padding: 12px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            overflow: hidden;
+        }
+
+        .topo-bar {
+            background-color: #1e1e24;
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: 1px solid #2d2d38;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+
+        h1 { font-size: 16px; color: #00adb5; text-transform: uppercase; letter-spacing: 1px; }
+
+        .badge-modo {
+            background-color: #2e7d32;
+            color: #fff;
+            font-size: 11px;
+            font-weight: bold;
+            padding: 4px 10px;
+            border-radius: 12px;
+            letter-spacing: 0.5px;
+        }
+
+        .status-conexao { font-size: 12px; color: #ff5252; font-weight: bold; }
+
+        .btn-conectar {
+            padding: 8px 16px;
+            background-color: #00adb5;
+            color: #121214;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .btn-conectar:hover { opacity: 0.9; }
+
+        .container-principal {
+            display: flex;
+            gap: 14px;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .titulo-secao {
+            font-size: 11px;
+            color: #888899;
+            text-transform: uppercase;
+            border-bottom: 1px solid #2d2d38;
+            padding-bottom: 4px;
+            margin-top: 4px;
+            letter-spacing: 0.5px;
+        }
+
+        .coluna-painel {
+            background-color: #1e1e24;
+            padding: 14px;
+            border-radius: 12px;
+            border: 1px solid #2d2d38;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            width: 320px;
+            flex-shrink: 0;
+        }
+
+        .linha-controle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background-color: #282832;
+            padding: 6px 10px;
+            border-radius: 8px;
+        }
+
+        .label-componente { font-size: 12px; font-weight: 500; }
+
+        .btn-andar {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            border: 2px solid #00adb5;
+            background-color: #121214;
+            color: #00adb5;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .btn-andar:active { background-color: #00adb5; color: #121214; }
+
+        .btn-seguranca {
+            padding: 8px;
+            border: none;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 48%;
+            text-transform: uppercase;
+        }
+        .btn-reset { background-color: #ffb74d; color: #121214; }
+        .btn-emergencia { background-color: #d32f2f; color: white; }
+
+        /* LEDS VIRTUAIS */
+        .led-virtual {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background-color: #383845;
+            transition: background-color 0.1s, box-shadow 0.1s;
+        }
+        .led-virtual.chamada-ativa { background-color: #00adb5; box-shadow: 0 0 10px #00adb5; }
+        .led-virtual.sensor-ativo { background-color: #4caf50; box-shadow: 0 0 10px #4caf50; }
+        .led-virtual.emergencia-ativa { background-color: #ff5252; box-shadow: 0 0 12px #ff5252; }
+        .led-virtual.porta-ativa { background-color: #ffb74d; box-shadow: 0 0 10px #ffb74d; }
+        .led-virtual.infra-ativo { background-color: #00e5ff; box-shadow: 0 0 12px #00e5ff; }
+
+        /* POÇO DO ELEVADOR */
+        .coluna-animacao {
+            background-color: #1e1e24;
+            padding: 14px;
+            border-radius: 12px;
+            border: 1px solid #2d2d38;
+            display: flex;
+            flex-direction: column;
+            width: 200px;
+            flex-shrink: 0;
+            gap: 10px;
+        }
+
+        .poco-elevador {
+            background-color: #121214;
+            border: 1px solid #2d2d38;
+            border-radius: 8px;
+            flex: 1;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 12px 8px;
+        }
+
+        .marcador-andar { font-size: 11px; color: #666677; border-bottom: 1px dashed #2d2d38; padding-bottom: 2px; }
+
+        .cabine-animada {
+            position: absolute;
+            left: 8px;
+            right: 8px;
+            height: 42px;
+            background: linear-gradient(135deg, #00adb5, #007a80);
+            border: 2px solid #ffffff;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+            color: #ffffff;
+            bottom: 10px;
+            transition: bottom 0.6s ease-in-out;
+            box-shadow: 0 0 10px rgba(0, 173, 181, 0.4);
+        }
+
+        /* TERMINAL DE LOGS */
+        .coluna-log {
+            background-color: #1e1e24;
+            padding: 14px;
+            border-radius: 12px;
+            border: 1px solid #2d2d38;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .caixa-texto {
+            background-color: #121214;
+            border: 1px solid #2d2d38;
+            border-radius: 8px;
+            padding: 12px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 12px;
+            color: #81c784;
+            overflow-y: auto;
+            flex: 1;
+            white-space: pre-wrap;
+            margin-top: 8px;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="topo-bar">
+        <div style="display:flex; align-items:center; gap:16px;">
+            <h1>Supervisório Elevador</h1>
+            <span class="badge-modo" id="badgeModo">MODO: NORMAL</span>
+            <div class="status-conexao" id="statusTxt">Status: Desconectado</div>
+        </div>
+        <button class="btn-conectar" id="btnConectar">CONECTAR SERIAL / BLUETOOTH</button>
+    </div>
+
+    <div class="container-principal">
+        <!-- PAINEL DE CONTROLES -->
+        <div class="coluna-painel">
+            <div class="titulo-secao">Comandos de Chamada</div>
+            <div class="linha-controle"><button class="btn-andar" onclick="enviarComando('3')">3</button><span class="label-componente">Chamada 3º Andar</span><div class="led-virtual" id="ledC"></div></div>
+            <div class="linha-controle"><button class="btn-andar" onclick="enviarComando('2')">2</button><span class="label-componente">Chamada 2º Andar</span><div class="led-virtual" id="ledB"></div></div>
+            <div class="linha-controle"><button class="btn-andar" onclick="enviarComando('1')">1</button><span class="label-componente">Chamada 1º Andar</span><div class="led-virtual" id="ledA"></div></div>
+
+            <div class="titulo-secao">Sensores de Posição (Físicos)</div>
+            <div class="linha-controle"><span class="label-componente">Sensor 3º Andar</span><div class="led-virtual" id="ledS3"></div></div>
+            <div class="linha-controle"><span class="label-componente">Sensor 2º Andar</span><div class="led-virtual" id="ledS2"></div></div>
+            <div class="linha-controle"><span class="label-componente">Sensor 1º Andar</span><div class="led-virtual" id="ledS1"></div></div>
+
+            <div class="titulo-secao">Atuadores & Segurança</div>
+            <div class="linha-controle"><span class="label-componente">Porta Cabine (Servo)</span><div class="led-virtual" id="ledPorta"></div></div>
+            <div class="linha-controle"><span class="label-componente">Barreira de Luz (IR)</span><div class="led-virtual" id="ledInfra"></div></div>
+
+            <div style="display: flex; justify-content: space-between; margin-top:6px;">
+                <button class="btn-seguranca btn-reset" onclick="enviarComando('R')">Reset</button>
+                <button class="btn-seguranca btn-emergencia" onclick="enviarComando('E')">Emergência</button>
+            </div>
+            <div class="linha-controle"><span class="label-componente">Estado de Emergência</span><div class="led-virtual" id="ledX"></div></div>
+        </div>
+
+        <!-- ANIMACAO DO POÇO -->
+        <div class="coluna-animacao">
+            <div class="titulo-secao">Posição do Poço</div>
+            <div class="poco-elevador">
+                <div class="marcador-andar">3º Andar</div>
+                <div class="marcador-andar">2º Andar</div>
+                <div class="marcador-andar">1º Andar</div>
+                <div class="cabine-animada" id="cabineElevador">1º</div>
+            </div>
+        </div>
+
+        <!-- TERMINAL DE LOGS -->
+        <div class="coluna-log">
+            <div class="titulo-secao">Terminal Serial (Logs em Tempo Real)</div>
+            <div class="caixa-texto" id="logTerminal">Aguardando conexão com a porta Serial/Bluetooth...</div>
+        </div>
+    </div>
+
+    <script>
+        let portaSerial = null;
+        let escritor = null;
+
+        const statusTxt = document.getElementById('statusTxt');
+        const btnConectar = document.getElementById('btnConectar');
+        const logTerminal = document.getElementById('logTerminal');
+        const cabineElevador = document.getElementById('cabineElevador');
+        const badgeModo = document.getElementById('badgeModo');
+
+        /* TECLAS DE ATALHO DO TECLADO (F1-F5) */
+        window.addEventListener('keydown', (e) => {
+            if (['F1', 'F2', 'F3', 'F4', 'F5'].includes(e.key)) e.preventDefault();
+            if (e.key === 'F1') enviarComando('1');
+            if (e.key === 'F2') enviarComando('2');
+            if (e.key === 'F3') enviarComando('3');
+            if (e.key === 'F4') enviarComando('R');
+            if (e.key === 'F5') enviarComando('E');
+        });
+
+        btnConectar.addEventListener('click', async () => {
+            try {
+                portaSerial = await navigator.serial.requestPort();
+                await portaSerial.open({ baudRate: 9600 });
+                escritor = portaSerial.writable.getWriter();
+                
+                statusTxt.innerText = "Status: Conectado!";
+                statusTxt.style.color = "#00adb5";
+                logTerminal.innerText = "[SISTEMA]: Conexão estabelecida com sucesso.\n";
+
+                lerDadosDaSerial();
+            } catch (e) {
+                statusTxt.innerText = "Status: Falha na Conexão";
+                statusTxt.style.color = "#ff5252";
+            }
+        });
+
+        async function enviarComando(caractere) {
+            if (!escritor) return;
+            const encoder = new TextEncoder();
+            await escritor.write(encoder.encode(caractere));
+            
+            // Acende o LED visual da chamada localmente quando clica no botão
+            if (caractere === '1') document.getElementById('ledA').classList.add('chamada-ativa');
+            if (caractere === '2') document.getElementById('ledB').classList.add('chamada-ativa');
+            if (caractere === '3') document.getElementById('ledC').classList.add('chamada-ativa');
+        }
+
+        async function lerDadosDaSerial() {
+            const textDecoder = new TextDecoderStream();
+            portaSerial.readable.pipeTo(textDecoder.writable);
+            const leitor = textDecoder.readable.getReader();
+            let buffer = "";
+
+            while (true) {
+                const { value, done } = await leitor.read();
+                if (done) break;
+                if (value) {
+                    buffer += value;
+                    let linhas = buffer.split('\n');
+                    buffer = linhas.pop(); // Mantém trecho incompleto para a próxima leitura
+                    linhas.forEach(linha => processarLinha(linha.trim()));
+                }
+            }
+        }
+
+        function processarLinha(linha) {
+            if (!linha) return;
+
+            // Registra no Log Visual
+            const hora = new Date().toLocaleTimeString();
+            logTerminal.innerText += `[${hora}] ${linha}\n`;
+            logTerminal.scrollTop = logTerminal.scrollHeight;
+
+            const l = linha.toLowerCase();
+
+            // --- 1. SENSORES FÍSICOS DE POSIÇÃO (ELETROMAGNÉTICOS / FIM DE CURSO) ---
+            // SENSOR 1
+            if (l.includes("s1:1") || l.includes("s1_on") || l.includes("sensor 1: 1") || l.includes("sensor1: 1")) {
+                document.getElementById('ledS1').classList.add('sensor-ativo');
+                document.getElementById('ledA').classList.remove('chamada-ativa'); // Apaga a chamada
+                moverCabine(1);
+            }
+            if (l.includes("s1:0") || l.includes("s1_off") || l.includes("sensor 1: 0") || l.includes("sensor1: 0")) {
+                document.getElementById('ledS1').classList.remove('sensor-ativo');
+            }
+
+            // SENSOR 2
+            if (l.includes("s2:1") || l.includes("s2_on") || l.includes("sensor 2: 1") || l.includes("sensor2: 1")) {
+                document.getElementById('ledS2').classList.add('sensor-ativo');
+                document.getElementById('ledB').classList.remove('chamada-ativa');
+                moverCabine(2);
+            }
+            if (l.includes("s2:0") || l.includes("s2_off") || l.includes("sensor 2: 0") || l.includes("sensor2: 0")) {
+                document.getElementById('ledS2').classList.remove('sensor-ativo');
+            }
+
+            // SENSOR 3
+            if (l.includes("s3:1") || l.includes("s3_on") || l.includes("sensor 3: 1") || l.includes("sensor3: 1")) {
+                document.getElementById('ledS3').classList.add('sensor-ativo');
+                document.getElementById('ledC').classList.remove('chamada-ativa');
+                moverCabine(3);
+            }
+            if (l.includes("s3:0") || l.includes("s3_off") || l.includes("sensor 3: 0") || l.includes("sensor3: 0")) {
+                document.getElementById('ledS3').classList.remove('sensor-ativo');
+            }
+
+            // --- 2. SENSOR DE INFRAVERMELHO (IR - CABINE) ---
+            if (l.includes("ir:1") || l.includes("ir_on") || l.includes("presenca") || l.includes("presença") || l.includes("obstaculo") || l.includes("objeto")) {
+                document.getElementById('ledInfra').classList.add('infra-ativo');
+            }
+            if (l.includes("ir:0") || l.includes("ir_off") || l.includes("sem presenca") || l.includes("sem presença") || l.includes("livre")) {
+                document.getElementById('ledInfra').classList.remove('infra-ativo');
+            }
+
+            // --- 3. SERVO MOTOR (PORTA) ---
+            if (l.includes("porta:1") || l.includes("porta_aberta") || l.includes("p1") || l.includes("abrindo")) {
+                document.getElementById('ledPorta').classList.add('porta-ativa');
+            }
+            if (l.includes("porta:0") || l.includes("porta_fechada") || l.includes("p0") || l.includes("fechando")) {
+                document.getElementById('ledPorta').classList.remove('porta-ativa');
+            }
+
+            // --- 4. ESTADO DE EMERGÊNCIA E RESET ---
+            if (l.includes("emergencia") || l.includes("emergência") || l.includes("e:1") || l.includes("parada")) {
+                document.getElementById('ledX').classList.add('emergencia-ativa');
+                badgeModo.innerText = "MODO: EMERGÊNCIA";
+                badgeModo.style.backgroundColor = "#d32f2f";
+            }
+            if (l.includes("reset") || l.includes("normal") || l.includes("e:0") || l.includes("pronto")) {
+                document.getElementById('ledX').classList.remove('emergencia-ativa');
+                badgeModo.innerText = "MODO: NORMAL";
+                badgeModo.style.backgroundColor = "#2e7d32";
+            }
+        }
+
+        function moverCabine(andar) {
+            cabineElevador.innerText = andar + 'º';
+            if (andar === 1) cabineElevador.style.bottom = '10px';
+            if (andar === 2) cabineElevador.style.bottom = 'calc(50% - 21px)';
+            if (andar === 3) cabineElevador.style.bottom = 'calc(100% - 52px)';
+        }
+    </script>
+</body>
+</html>

@@ -1,5 +1,7 @@
 #include "Logica.h"
 #include "Motor.h"
+#include "Display.h"   // Incluído para controlar a tela no Homing
+#include "Bluetooth.h" // Incluído para enviar log no Homing
 #include <Arduino.h>
 #include <Wire.h>
 
@@ -35,7 +37,10 @@ bool sensorAtivo(int andar) {
 }
 
 void executarHoming() {
-  // Se nenhum sensor responder na partida, inicia o resgate descendo
+  // 1. Exibe no LCD que está em referenciamento e envia log via Bluetooth
+  lcdReferenciando();
+  enviarLog("Elevador em Referenciamento...");
+  
   ligarMotorDescer();
   
   // Desce até encontrar QUALQUER um dos 3 sensores
@@ -52,6 +57,10 @@ void executarHoming() {
   else if (sensorAtivo(3)) andarAtual = 3;
 
   andarDestino = andarAtual;
+
+  // 2. Atualiza a tela para PARADO e envia log com o andar correto
+  lcdParado();
+  enviarLog("Elevador Parado no " + String(andarAtual) + "º Andar");
 }
 
 void detectarAndarInicial() {
