@@ -18,6 +18,13 @@ int andarDestino = 0;
 int estado = 0;
 int direcaoAtual = 0;
 
+// Definição real e alocação de memória da variável global
+unsigned int totalViagensAcumuladas = 0;
+
+void registrarViagemConcluida() {
+  totalViagensAcumuladas++;
+}
+
 bool lerSensorComFiltro(int pino) {
   int contagemLow = 0;
   for (int i = 0; i < 5; i++) {

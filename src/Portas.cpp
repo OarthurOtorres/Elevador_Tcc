@@ -1,69 +1,142 @@
 #include "Portas.h"
+#include "DingDong.h"
+#include <Arduino.h>
+#include <Servo.h>
 
-#define PINO_SENSOR_IR 8        // Pino do sensor IR de presença
-#define PINO_ACTUADOR_PORTA 9   // Pino físico do LED/Motor da Porta
+// MAPA DE PINOS REAIS DO HARDWARE
+#define SENSOR_IV_PIN 8   // Pino do Sensor IR de Presença
 
-enum EstadoPorta { PORTA_FECHADA, PORTA_ABRINDO, PORTA_ABERTA, PORTA_FECHANDO };
+#define SERVO_P1 A0       // Servo Porta 1º Andar
+#define SERVO_P2 A1       // Servo Porta 2º Andar
+#define SERVO_P3 A2       // Servo Porta 3º Andar
+
+#define ANGULO_FECHADO 0
+#define ANGULO_ABERTO  90
+
+enum EstadoPorta {
+  PORTA_FECHADA,
+  PORTA_ABRINDO,
+  PORTA_ABERTA,
+  PORTA_FECHANDO
+};
+
 static EstadoPorta estadoAtualPorta = PORTA_FECHADA;
-static unsigned long tempoEstadoPorta = 0;
+static int andarAtualPorta = 1;
+static unsigned long tempoInicioEstado = 0;
+static unsigned long tempoInicioObstrucao = 0;
+
+Servo servoP1;
+Servo servoP2;
+Servo servoP3;
+
+Servo* getServoAndar(int andar) {
+  if (andar == 1) return &servoP1;
+  if (andar == 2) return &servoP2;
+  if (andar == 3) return &servoP3;
+  return &servoP1;
+}
+
+bool sensorObstaculoAtivo() {
+  return (digitalRead(SENSOR_IV_PIN) == LOW);
+}
+
+// Wrapper para o Bluetooth verificar o feixe IR
+bool lerSensorIR() {
+  return sensorObstaculoAtivo();
+}
 
 void inicializarPortas() {
-  pinMode(PINO_SENSOR_IR, INPUT_PULLUP);
-  pinMode(PINO_ACTUADOR_PORTA, OUTPUT);
-  digitalWrite(PINO_ACTUADOR_PORTA, LOW);
+  pinMode(SENSOR_IV_PIN, INPUT_PULLUP);
+
+  servoP1.attach(SERVO_P1, 500, 2500);
+  servoP2.attach(SERVO_P2, 500, 2500);
+  servoP3.attach(SERVO_P3, 500, 2500);
+
+  servoP1.write(ANGULO_FECHADO);
+  servoP2.write(ANGULO_FECHADO);
+  servoP3.write(ANGULO_FECHADO);
+
   estadoAtualPorta = PORTA_FECHADA;
 }
 
-void comandarAberturaPorta() {
-  if (estadoAtualPorta == PORTA_FECHADA || estadoAtualPorta == PORTA_FECHANDO) {
-    estadoAtualPorta = PORTA_ABRINDO;
-    tempoEstadoPorta = millis();
-  }
-}
+void comandarAberturaPorta(int andar) {
+  andarAtualPorta = andar;
+  estadoAtualPorta = PORTA_ABRINDO;
+  tempoInicioEstado = millis();
+  tempoInicioObstrucao = 0;
 
-bool lerSensorIR() {
-  return (digitalRead(PINO_SENSOR_IR) == LOW); // Ajuste LOW/HIGH conforme seu sensor
+  Servo* s = getServoAndar(andarAtualPorta);
+  if (!s->attached()) {
+    int pino = (andar == 1 ? SERVO_P1 : (andar == 2 ? SERVO_P2 : SERVO_P3));
+    s->attach(pino, 500, 2500);
+  }
+  s->write(ANGULO_ABERTO);
 }
 
 void gerenciarMaquinaPortas() {
   unsigned long agora = millis();
+  bool haObstaculo = sensorObstaculoAtivo();
 
   switch (estadoAtualPorta) {
+    
     case PORTA_FECHADA:
-      digitalWrite(PINO_ACTUADOR_PORTA, LOW);
+      setAlertaObstrucao(false);
+      tempoInicioObstrucao = 0;
       break;
 
     case PORTA_ABRINDO:
-      digitalWrite(PINO_ACTUADOR_PORTA, HIGH); // Liga LED/Atuador indicando movimento
-      if (agora - tempoEstadoPorta >= 1500) {  // 1.5s para abrir
+      getServoAndar(andarAtualPorta)->write(ANGULO_ABERTO);
+
+      if (agora - tempoInicioEstado >= 1200) { 
         estadoAtualPorta = PORTA_ABERTA;
-        tempoEstadoPorta = agora;
+        tempoInicioEstado = agora;
+        tempoInicioObstrucao = 0;
       }
       break;
 
     case PORTA_ABERTA:
-      digitalWrite(PINO_ACTUADOR_PORTA, HIGH);
-      // Se houver presença no feixe IR, renova o tempo para manter a porta aberta
-      if (lerSensorIR()) {
-        tempoEstadoPorta = agora;
-      }
-      if (agora - tempoEstadoPorta >= 3000) {  // Fica aberta por 3s
-        estadoAtualPorta = PORTA_FECHANDO;
-        tempoEstadoPorta = agora;
+      if (haObstaculo) {
+        tempoInicioEstado = agora; 
+
+        if (tempoInicioObstrucao == 0) {
+          tempoInicioObstrucao = agora;
+        }
+
+        if (agora - tempoInicioObstrucao >= 4000) {
+          setAlertaObstrucao(true);
+        }
+      } else {
+        tempoInicioObstrucao = 0;
+        setAlertaObstrucao(false);
+
+        if (agora - tempoInicioEstado >= 3000) {
+          estadoAtualPorta = PORTA_FECHANDO;
+          tempoInicioEstado = agora;
+
+          Servo* s = getServoAndar(andarAtualPorta);
+          s->write(ANGULO_FECHADO);
+        }
       }
       break;
 
     case PORTA_FECHANDO:
-      digitalWrite(PINO_ACTUADOR_PORTA, HIGH);
-      // Proteção: Obstáculo detectado enquanto fecha -> Reabre imediatamente
-      if (lerSensorIR()) {
+      getServoAndar(andarAtualPorta)->write(ANGULO_FECHADO);
+
+      if (haObstaculo) { // Reabertura de emergência se alguém passar na porta
         estadoAtualPorta = PORTA_ABRINDO;
-        tempoEstadoPorta = agora;
+        tempoInicioEstado = agora;
+        tempoInicioObstrucao = agora;
+        setAlertaObstrucao(false);
+
+        Servo* s = getServoAndar(andarAtualPorta);
+        s->write(ANGULO_ABERTO);
         break;
       }
-      if (agora - tempoEstadoPorta >= 1500) {  // 1.5s para fechar
+
+      if (agora - tempoInicioEstado >= 1200) { 
         estadoAtualPorta = PORTA_FECHADA;
-        digitalWrite(PINO_ACTUADOR_PORTA, LOW);
+        setAlertaObstrucao(false);
+        tempoInicioObstrucao = 0;
       }
       break;
   }
@@ -73,6 +146,23 @@ bool portaEstaTotalmenteFechada() {
   return (estadoAtualPorta == PORTA_FECHADA);
 }
 
+// Retorna verdadeiro para o Bluetooth caso QUALQUER servo esteja operando
 bool portaEstaAberta() {
   return (estadoAtualPorta != PORTA_FECHADA);
+}
+
+void ativarPortaEmergencia(int andar) {
+  setAlertaObstrucao(false);
+  Servo* s = getServoAndar(andar);
+  s->write(ANGULO_ABERTO);
+  delay(500);
+  s->detach();
+}
+
+void restaurarPortasAposEmergencia(int andar) {
+  Servo* s = getServoAndar(andar);
+  int pino = (andar == 1 ? SERVO_P1 : (andar == 2 ? SERVO_P2 : SERVO_P3));
+  s->attach(pino, 500, 2500);
+  s->write(ANGULO_FECHADO);
+  estadoAtualPorta = PORTA_FECHADA;
 }

@@ -37,12 +37,13 @@ void loop() {
     
     if (emergenciasTratadas == true) { 
       pararMotor();
-      setSireneEmergencia(false);
+      setSireneEmergencia(false); // Desliga sirene física
       restaurarPortasAposEmergencia(andarAtual);
       desligarLedReset(); // Já zera a telaEmergenciaEscrita internamente no Display.cpp
       emergenciasTratadas = false;
       estado = 0;
       enviarLog("Emergência normalizada. Elevador pronto.");
+      enviarLog("*X0"); // Notifica o supervisório web para PARAR a sirene
     }
 
     lerBotoes();
@@ -59,7 +60,7 @@ void loop() {
       if (chamada[andarAtual] == true) {
         chamada[andarAtual] = false; 
         comandoPortaEnviado = false; 
-        estado = 2;                  
+        estado = 2;                   
       } else {
         andarDestino = escolherProximoAndar();
         
@@ -94,13 +95,19 @@ void loop() {
         }
       }
 
+      // CHEGADA AO ANDAR DE DESTINO
       if ((andarAtual == andarDestino && sensorAtivo(andarDestino)) ||
           (chamada[andarAtual] && sensorAtivo(andarAtual))) {
 
         pararMotor();
+        
+        // --- CONTABILIZAÇÃO DA VIAGEM ---
+        registrarViagemConcluida(); // Incremente no C++
+        enviarLog("*V" + String(totalViagensAcumuladas)); // Atualiza o contador no Supervisório Web
+        
         chamada[andarAtual] = false; 
         comandoPortaEnviado = false; 
-        estado = 2;                  
+        estado = 2;                   
       }
 
     } else if (estado == 2) { // PORTA ABERTA
@@ -114,11 +121,13 @@ void loop() {
 
       if (!comandoPortaEnviado) {
         comandarAberturaPorta(andarAtual); 
-        tocarDingDong();
+        tocarDingDong(); // Som físico do elevador
+        enviarLog("*P1"); // Sinaliza abertura de porta e dispara som Ding-Dong na web
         comandoPortaEnviado = true;
       }
 
       if (portaEstaTotalmenteFechada()) {
+        enviarLog("*P0");
         chamada[andarAtual] = false; 
         estado = 0;
       }
@@ -127,9 +136,11 @@ void loop() {
   } else { // MODO EMERGÊNCIA ATIVO
     if (emergenciasTratadas == false) {
       pararMotor();
+      setSireneEmergencia(true); // Liga sirene física
       ativarPortaEmergencia(andarAtual);
       emergenciasTratadas = true;
       enviarLog("PERIGO: Emergência Ativada!");
+      enviarLog("*X1"); // Notifica o supervisório web para DISPARAR a sirene contínua
       estadoAnteriorLog = -1;
     }
 

@@ -7,6 +7,18 @@
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
+        /* Animação para o fundo piscar em tom de alerta vermelho na emergência */
+        @keyframes piscarEmergenciaFundo {
+            0%, 100% { 
+                background-color: #1a1a1e; 
+                box-shadow: inset 0 0 0px rgba(255, 0, 0, 0);
+            }
+            50% { 
+                background-color: #400505; 
+                box-shadow: inset 0 0 80px rgba(255, 0, 0, 0.5);
+            }
+        }
+
         body {
             background-color: #1a1a1e;
             color: #ffffff;
@@ -18,6 +30,12 @@
             flex-direction: column;
             gap: 12px;
             overflow: hidden;
+            transition: background-color 0.3s ease;
+        }
+
+        /* Classe ativada quando em emergência */
+        body.emergencia-ativa {
+            animation: piscarEmergenciaFundo 0.8s infinite;
         }
 
         .topo-bar {
@@ -435,6 +453,14 @@
     <script>
         let portaSerial = null, escritor = null, leitor = null;
         let somHabilitado = true;
+        let audioCtx = null;
+        
+        // Objetos Web Audio para a Sirene Modulada
+        let oscSirene = null;
+        let lfoSirene = null;
+        let lfoGain = null;
+        let gainSirene = null;
+
         let contadorViagens = 0, contadorAlertas = 0;
         let ultimoAndarRegistrado = null, tempoInicioConexao = null, timerUptime = null;
         let paradasA1 = 0, paradasA2 = 0, paradasA3 = 0;
@@ -455,7 +481,131 @@
         const ledIR = document.getElementById('ledIR');
         const lblIR = document.getElementById('lblIR');
 
-        // VÍNCULO DAS TECLAS DE FUNÇÃO (F1 A F5)
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        // SOM DING-DONG REALISTA (Mi5 -> Do5)
+        function tocarDingDong() {
+            if (!somHabilitado) return;
+            initAudio();
+            if (!audioCtx) return;
+
+            const now = audioCtx.currentTime;
+
+            // DING
+            const osc1 = audioCtx.createOscillator();
+            const gain1 = audioCtx.createGain();
+            osc1.type = 'sine';
+            osc1.frequency.setValueAtTime(659.25, now);
+            gain1.gain.setValueAtTime(0.35, now);
+            gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+            osc1.connect(gain1);
+            gain1.connect(audioCtx.destination);
+            osc1.start(now);
+            osc1.stop(now + 0.8);
+
+            // DONG
+            const osc2 = audioCtx.createOscillator();
+            const gain2 = audioCtx.createGain();
+            osc2.type = 'sine';
+            osc2.frequency.setValueAtTime(523.25, now + 0.35);
+            gain2.gain.setValueAtTime(0.35, now + 0.35);
+            gain2.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+            osc2.connect(gain2);
+            gain2.connect(audioCtx.destination);
+            osc2.start(now + 0.35);
+            osc2.stop(now + 1.2);
+        }
+
+        // SIRENE REALISTA (WAIL INDUSTRIAL COM MODULAÇÃO LFO)
+        function iniciarSirene() {
+            if (oscSirene || !somHabilitado) return;
+            initAudio();
+            if (!audioCtx) return;
+
+            const now = audioCtx.currentTime;
+
+            oscSirene = audioCtx.createOscillator();
+            lfoSirene = audioCtx.createOscillator();
+            lfoGain = audioCtx.createGain();
+            gainSirene = audioCtx.createGain();
+
+            // Frequência base e formato de onda da sirene
+            oscSirene.type = 'sawtooth';
+            oscSirene.frequency.setValueAtTime(850, now);
+
+            // Oscilador de baixa frequência (LFO) para varrimento contínuo (Wail)
+            lfoSirene.type = 'sine';
+            lfoSirene.frequency.setValueAtTime(1.2, now); // Velocidade do ciclo da sirene (1.2 Hz)
+            lfoGain.gain.setValueAtTime(350, now);        // Variação de pitch (+/- 350 Hz => 500 Hz a 1200 Hz)
+
+            lfoSirene.connect(lfoGain);
+            lfoGain.connect(oscSirene.frequency);
+
+            gainSirene.gain.setValueAtTime(0.18, now);
+
+            oscSirene.connect(gainSirene);
+            gainSirene.connect(audioCtx.destination);
+
+            oscSirene.start(now);
+            lfoSirene.start(now);
+        }
+
+        function pararSirene() {
+            if (oscSirene) {
+                try {
+                    oscSirene.stop();
+                    lfoSirene.stop();
+                    oscSirene.disconnect();
+                    lfoSirene.disconnect();
+                } catch(e){}
+                oscSirene = null;
+                lfoSirene = null;
+            }
+        }
+
+        function tocarSomClique() {
+            if (!somHabilitado) return;
+            initAudio();
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(700, now);
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + 0.05);
+        }
+
+        function tocarSomReset() {
+            if (!somHabilitado) return;
+            initAudio();
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(587.33, now);
+            osc.frequency.setValueAtTime(880, now + 0.1);
+            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + 0.3);
+        }
+
+        // TECLAS DE FUNÇÃO (F1 a F5)
         window.addEventListener('keydown', (e) => {
             if (e.key === 'F1') { e.preventDefault(); enviarComando('1'); }
             else if (e.key === 'F2') { e.preventDefault(); enviarComando('2'); }
@@ -499,11 +649,14 @@
 
         function alternarSom() {
             somHabilitado = !somHabilitado;
+            if (!somHabilitado) pararSirene();
             btnSom.innerText = somHabilitado ? "🔊 Som: LIGADO" : "🔇 Som: DESLIGADO";
             btnSom.classList.toggle('mutado', !somHabilitado);
+            if (somHabilitado) tocarSomClique();
         }
 
         btnConectar.addEventListener('click', async () => {
+            initAudio();
             try {
                 statusTxt.innerText = "Conectando...";
                 portaSerial = await navigator.serial.requestPort();
@@ -513,6 +666,7 @@
                 statusTxt.style.color = "#00adb5";
                 logTerminal.innerHTML = "[SISTEMA]: Conexão Serial/Bluetooth Estabelecida.\n";
                 iniciarUptime();
+                tocarSomClique();
                 
                 setTimeout(() => enviarComando('Q'), 300);
 
@@ -524,6 +678,7 @@
         });
 
         async function enviarComando(caractere) {
+            tocarSomClique();
             if (!escritor) return;
             const encoder = new TextEncoder();
             await escritor.write(encoder.encode(caractere));
@@ -550,7 +705,9 @@
                         if (linhaLimpa.startsWith('*')) {
                             processarTagEspecial(linhaLimpa);
                         } else {
-                            adicionarAoLog(linhaLimpa);
+                            if (!/^E:[01]$/i.test(linhaLimpa) && !/^E[01]$/i.test(linhaLimpa)) {
+                                adicionarAoLog(linhaLimpa);
+                            }
                         }
                     });
                 }
@@ -558,7 +715,7 @@
         }
 
         function processarTagEspecial(tag) {
-            // CONTAGEM DE VIAGENS ACUMULADAS SINCRO
+            // CONTAGEM DE VIAGENS ACUMULADAS
             if (tag.startsWith('*V')) {
                 contadorViagens = parseInt(tag.substring(2)) || 0;
                 cntViagens.innerText = contadorViagens;
@@ -589,10 +746,11 @@
                 lblIR.innerText = "IR Presença: Livre";
             }
 
-            // ESTADO DA PORTA (ABERTA/FECHADA)
+            // ESTADO DA PORTA (ACIONA O DING-DONG AO ABRIR)
             else if (tag === '*P1') {
                 ledP.classList.add('porta-aberta');
                 lblPorta.innerText = "Porta Aberta";
+                tocarDingDong();
             } else if (tag === '*P0') {
                 ledP.classList.remove('porta-aberta');
                 lblPorta.innerText = "Porta Fechada";
@@ -633,16 +791,23 @@
                 if (idLed === 'ledX') {
                     if (status === '1') {
                         elemento.classList.add('emergencia-ativa');
+                        document.body.classList.add('emergencia-ativa'); // ATIVA FUNDO VERMELHO PISCANTE
                         icoSentido.innerText = "🚨";
                         txtSentido.innerText = "BLOQUEADO";
                         txtSentido.style.color = "#ff4d4d";
                         contadorAlertas++;
                         cntAlertas.innerText = contadorAlertas;
+                        iniciarSirene(); // DISPARA SIRENE REALISTA
+                        adicionarAoLog("[ALERTA]: Emergência do sistema ativada!");
                     } else {
                         elemento.classList.remove('emergencia-ativa');
+                        document.body.classList.remove('emergencia-ativa'); // DESATIVA FUNDO VERMELHO PISCANTE
                         icoSentido.innerText = "⏸️";
                         txtSentido.innerText = "PARADO";
                         txtSentido.style.color = "#00adb5";
+                        pararSirene(); // DESLIGA SIRENE
+                        tocarSomReset();
+                        adicionarAoLog("[SISTEMA]: Emergência desativada / Normalizado.");
                     }
                     return;
                 }
