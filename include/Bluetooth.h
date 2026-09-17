@@ -4,8 +4,9 @@
 #include <Arduino.h>
 
 void BluetoothInit();
+void enviarLog(const String& mensagem);
+void enviarEstadoCompleto();
 void atualizarInterfaceBluetooth();
 void lerComandosBluetooth();
-void enviarLog(const String& mensagem);
 
 #endif

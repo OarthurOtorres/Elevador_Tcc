@@ -1,12 +1,13 @@
 #ifndef PORTAS_H
 #define PORTAS_H
 
+#include <Arduino.h>
+
 void inicializarPortas();
-void comandarAberturaPorta(int andar);
+void comandarAberturaPorta();
 void gerenciarMaquinaPortas();
 bool portaEstaTotalmenteFechada();
-void ativarPortaEmergencia(int andar);
-void restaurarPortasAposEmergencia(int andar);
-bool sensorObstaculoAtivo();
+bool portaEstaAberta();
+bool lerSensorIR();
 
 #endif

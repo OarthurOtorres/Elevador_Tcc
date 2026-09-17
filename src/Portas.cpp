@@ -1,141 +1,69 @@
 #include "Portas.h"
-#include "DingDong.h"
-#include <Arduino.h>
-#include <Servo.h>
 
-// ============================================================================
-// MAPA DE PINOS REAIS DO SEU HARDWARE
-// ============================================================================
-#define SENSOR_IV_PIN 8   // Pino do Sensor IR
+#define PINO_SENSOR_IR 8        // Pino do sensor IR de presença
+#define PINO_ACTUADOR_PORTA 9   // Pino físico do LED/Motor da Porta
 
-#define SERVO_P1 A0       // Servo Porta 1º Andar
-#define SERVO_P2 A1       // Servo Porta 2º Andar
-#define SERVO_P3 A2       // Servo Porta 3º Andar
-
-#define ANGULO_FECHADO 0
-#define ANGULO_ABERTO  90
-// ============================================================================
-
-enum EstadoPorta {
-  PORTA_FECHADA,
-  PORTA_ABRINDO,
-  PORTA_ABERTA,
-  PORTA_FECHANDO
-};
-
+enum EstadoPorta { PORTA_FECHADA, PORTA_ABRINDO, PORTA_ABERTA, PORTA_FECHANDO };
 static EstadoPorta estadoAtualPorta = PORTA_FECHADA;
-static int andarAtualPorta = 1;
-static unsigned long tempoInicioEstado = 0;
-static unsigned long tempoInicioObstrucao = 0;
-
-Servo servoP1;
-Servo servoP2;
-Servo servoP3;
-
-Servo* getServoAndar(int andar) {
-  if (andar == 1) return &servoP1;
-  if (andar == 2) return &servoP2;
-  if (andar == 3) return &servoP3;
-  return &servoP1;
-}
-
-bool sensorObstaculoAtivo() {
-  return (digitalRead(SENSOR_IV_PIN) == LOW);
-}
+static unsigned long tempoEstadoPorta = 0;
 
 void inicializarPortas() {
-  pinMode(SENSOR_IV_PIN, INPUT_PULLUP);
-
-  // Anexa os servos nos pinos analógicos (A0, A1, A2 funcionam perfeitamente como PWM de servo)
-  servoP1.attach(SERVO_P1, 500, 2500);
-  servoP2.attach(SERVO_P2, 500, 2500);
-  servoP3.attach(SERVO_P3, 500, 2500);
-
-  servoP1.write(ANGULO_FECHADO);
-  servoP2.write(ANGULO_FECHADO);
-  servoP3.write(ANGULO_FECHADO);
-
+  pinMode(PINO_SENSOR_IR, INPUT_PULLUP);
+  pinMode(PINO_ACTUADOR_PORTA, OUTPUT);
+  digitalWrite(PINO_ACTUADOR_PORTA, LOW);
   estadoAtualPorta = PORTA_FECHADA;
 }
 
-void comandarAberturaPorta(int andar) {
-  andarAtualPorta = andar;
-  estadoAtualPorta = PORTA_ABRINDO;
-  tempoInicioEstado = millis();
-  tempoInicioObstrucao = 0;
-
-  Servo* s = getServoAndar(andarAtualPorta);
-  if (!s->attached()) {
-    int pino = (andar == 1 ? SERVO_P1 : (andar == 2 ? SERVO_P2 : SERVO_P3));
-    s->attach(pino, 500, 2500);
+void comandarAberturaPorta() {
+  if (estadoAtualPorta == PORTA_FECHADA || estadoAtualPorta == PORTA_FECHANDO) {
+    estadoAtualPorta = PORTA_ABRINDO;
+    tempoEstadoPorta = millis();
   }
-  s->write(ANGULO_ABERTO);
+}
+
+bool lerSensorIR() {
+  return (digitalRead(PINO_SENSOR_IR) == LOW); // Ajuste LOW/HIGH conforme seu sensor
 }
 
 void gerenciarMaquinaPortas() {
   unsigned long agora = millis();
-  bool haObstaculo = sensorObstaculoAtivo();
 
   switch (estadoAtualPorta) {
-    
     case PORTA_FECHADA:
-      setAlertaObstrucao(false);
-      tempoInicioObstrucao = 0;
+      digitalWrite(PINO_ACTUADOR_PORTA, LOW);
       break;
 
     case PORTA_ABRINDO:
-      getServoAndar(andarAtualPorta)->write(ANGULO_ABERTO);
-
-      if (agora - tempoInicioEstado >= 1200) { 
+      digitalWrite(PINO_ACTUADOR_PORTA, HIGH); // Liga LED/Atuador indicando movimento
+      if (agora - tempoEstadoPorta >= 1500) {  // 1.5s para abrir
         estadoAtualPorta = PORTA_ABERTA;
-        tempoInicioEstado = agora;
-        tempoInicioObstrucao = 0;
+        tempoEstadoPorta = agora;
       }
       break;
 
     case PORTA_ABERTA:
-      if (haObstaculo) {
-        tempoInicioEstado = agora; 
-
-        if (tempoInicioObstrucao == 0) {
-          tempoInicioObstrucao = agora;
-        }
-
-        if (agora - tempoInicioObstrucao >= 4000) {
-          setAlertaObstrucao(true);
-        }
-      } else {
-        tempoInicioObstrucao = 0;
-        setAlertaObstrucao(false);
-
-        if (agora - tempoInicioEstado >= 3000) {
-          estadoAtualPorta = PORTA_FECHANDO;
-          tempoInicioEstado = agora;
-
-          Servo* s = getServoAndar(andarAtualPorta);
-          s->write(ANGULO_FECHADO);
-        }
+      digitalWrite(PINO_ACTUADOR_PORTA, HIGH);
+      // Se houver presença no feixe IR, renova o tempo para manter a porta aberta
+      if (lerSensorIR()) {
+        tempoEstadoPorta = agora;
+      }
+      if (agora - tempoEstadoPorta >= 3000) {  // Fica aberta por 3s
+        estadoAtualPorta = PORTA_FECHANDO;
+        tempoEstadoPorta = agora;
       }
       break;
 
     case PORTA_FECHANDO:
-      getServoAndar(andarAtualPorta)->write(ANGULO_FECHADO);
-
-      if (haObstaculo) { // Reabertura de emergência se alguém passar na porta
+      digitalWrite(PINO_ACTUADOR_PORTA, HIGH);
+      // Proteção: Obstáculo detectado enquanto fecha -> Reabre imediatamente
+      if (lerSensorIR()) {
         estadoAtualPorta = PORTA_ABRINDO;
-        tempoInicioEstado = agora;
-        tempoInicioObstrucao = agora;
-        setAlertaObstrucao(false);
-
-        Servo* s = getServoAndar(andarAtualPorta);
-        s->write(ANGULO_ABERTO);
+        tempoEstadoPorta = agora;
         break;
       }
-
-      if (agora - tempoInicioEstado >= 1200) { 
+      if (agora - tempoEstadoPorta >= 1500) {  // 1.5s para fechar
         estadoAtualPorta = PORTA_FECHADA;
-        setAlertaObstrucao(false);
-        tempoInicioObstrucao = 0;
+        digitalWrite(PINO_ACTUADOR_PORTA, LOW);
       }
       break;
   }
@@ -145,18 +73,6 @@ bool portaEstaTotalmenteFechada() {
   return (estadoAtualPorta == PORTA_FECHADA);
 }
 
-void ativarPortaEmergencia(int andar) {
-  setAlertaObstrucao(false);
-  Servo* s = getServoAndar(andar);
-  s->write(ANGULO_ABERTO);
-  delay(500);
-  s->detach();
-}
-
-void restaurarPortasAposEmergencia(int andar) {
-  Servo* s = getServoAndar(andar);
-  int pino = (andar == 1 ? SERVO_P1 : (andar == 2 ? SERVO_P2 : SERVO_P3));
-  s->attach(pino, 500, 2500);
-  s->write(ANGULO_FECHADO);
-  estadoAtualPorta = PORTA_FECHADA;
+bool portaEstaAberta() {
+  return (estadoAtualPorta != PORTA_FECHADA);
 }
