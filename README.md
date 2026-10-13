@@ -2,6 +2,8 @@
 
 Projeto de automação e controle de um elevador de carga/passageiro utilizando **Arduino Uno** e ambiente **PlatformIO**, com controle de tração, segurança, sinalização sonora e supervisório web.
 
+<img width="900" height="1600" alt="ElevadorVista" src="https://github.com/user-attachments/assets/9346ef59-3fd4-48d4-bb63-a401ae742d70" />
+
 ---
 
 ## 🛠️ Tecnologias e Hardware Utilizados
