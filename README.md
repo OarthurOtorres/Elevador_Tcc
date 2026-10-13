@@ -80,3 +80,28 @@ Elevador_Tcc/
 ├── Supervisorio_html/    # Interface do Supervisório SCADA
 │   └── index.html        # Painel web de monitoramento
 └── platformio.ini        # Configurações de build e dependências
+
+👥 Integrantes e Orientação
+
+👨‍🎓 Alunos Integrantes
+
+Arthur Oliveira Torres
+
+Gabriel Moura da Silva
+
+Giovanny Manoel P. Arantes
+
+João Pedro Souza
+
+João Vitor C. de Moura
+
+José Felipe Fiocruci
+
+Júlio César Silva
+
+Kauê Silva Ribeiro
+
+Miguel Oliveira de Moraes
+
+👨‍🏫 Professor Orientador
+Prof. Nivaldo Bertozzo Junior
