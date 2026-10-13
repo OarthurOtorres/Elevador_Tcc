@@ -41,7 +41,7 @@ Para garantir maior estabilidade elétrica, eliminar o uso de *protoboards* e co
 
 ### 🔬 Processo de Fabricação da PCI
 A confecção da placa seguiu o processo de fotolitografia artesanal:
-1. **Mapeamento e Layout:** Design do circuito impresso desenvolvido no software de CAD eletrônico.
+1. **Mapeamento e Layout:** Design do circuito impresso e diagrama esquemático desenvolvido no software KiCad.
 2. **Transferência de Fotolito:** Impressão do layout do circuito em **papel de retroprojetor (transparência)** com alta densidade de preto.
 3. **Insolação e Máscara UV:** Aplicação e cura de **tinta UV fotossensível** exposta à luz ultravioleta para transferência do fotolito para a placa de fenolite/fibra de vidro.
 4. **Corrosão e Acabamento:** Banho químico para corrosão do cobre excedente, furação dos ilhós e soldagem dos conectores e componentes.
