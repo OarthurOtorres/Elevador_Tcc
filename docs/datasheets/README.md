@@ -13,18 +13,32 @@ Esta pasta armazena a documentação técnica oficial (*datasheets* em PDF, manu
 | **Expansor de I/O** | PCF8574 | 2.5V - 6V DC / Barramento I2C (`0x27`) | Leitura da botoeira física e acionamento dos LEDs do painel | [Ver Datasheet](./expansor_pcf8574.pdf) |
 | **Módulo Bluetooth** | HC-05 | 3.3V - 5V DC / UART Serial (9600 baud) | Comunicação sem fio com o Supervisório Web (SCADA) | [Ver Datasheet](./modulo_bluetooth.PDF) |
 | **Display de Sinalização** | LCD 16x2 I2C | 5V DC / Barramento I2C | Exibição visual de andar, sentido e estado de emergência | [Ver Datasheet](./display_lcd.PDF) |
-| **Sensores de Andar** | Sensor Magnético Hall / Fim de Curso | 5V DC / Digital (Pull-Up) | Detecção da posição física da cabine nos andares (S1, S2, S3) | [Ver Datasheet](./sensor_hall.PDF) |
-| **Sensor de Porta** | Módulo IR de Barreira (FC-51) | 3.3V - 5V DC / Digital | Detecção de presença/obstrução na porta da cabine (Pino D8) | [Ver Datasheet (ES/EN)](./sensor_ir.pdf) |
-| **Atuador de Porta** | Micro Servomotor (MG90S) | 4.8V - 6V DC / Sinal PWM | Mecanismo de abertura e fechamento físico das portas | [Ver Datasheet](./servo_mg90s.PDF) |
+| **Sensores dos Andares** | Sensor Magnético Hall / Fim de Curso | 5V DC / Digital (Pull-Up) | Detecção da posição física da cabine nos andares (S1, S2, S3) | [Ver Datasheet](./sensor_hall.PDF) |
+| **Sensor da Porta** | Módulo IR de Barreira (FC-51) | 3.3V - 5V DC / Digital | Detecção de presença/obstrução na porta da cabine (Pino D8) | [Ver Datasheet (ES/EN)](./sensor_ir.pdf) |
+| **Atuador da Porta** | Micro Servomotor (MG90S) | 4.8V - 6V DC / Sinal PWM | Mecanismo de abertura e fechamento físico das portas | [Ver Datasheet](./servo_mg90s.PDF) |
+| **Motor de Tração** | Motor DC de Para-brisa (F006WM0308) | 24V DC / Controle PWM | Movimentação mecânica da cabine (subida e descida) | [Ver Datasheet](./motor_parabrisa.pdf) |
 | **Sinalizador Sonoro** | Buzzer Passivo 5V | 5V DC / Frequência (Tone) | Emissão da sirene de emergência e som "Ding-Dong" | *Módulo Padrão 5V* |
+
+---
+
+## 📐 Documentação e Fabricação da PCI
+
+Os ficheiros de projeto da Placa de Circuito Impresso (PCI) desenvolvida no software KiCad estão organizados abaixo:
+
+| Documento | Descrição | Ficheiro PDF |
+| :--- | :--- | :--- |
+| **Esquema Elétrico** | Diagrama esquemático completo das ligações, barramentos e pinagem | [Ver Esquemático](./esquematico_circuito.pdf) |
+| **Layout Técnico PCI** | Desenho cotado com as dimensões exatas e o traçado das trilhas de cobre | [Ver Layout PCI](./layout_pci.pdf) |
+| **Mapa de Montagem (Serigrafia)** | Guia de posicionamento e identificação dos componentes na placa (R1, U1, conectores) | [Ver Serigrafia](./serigrafia_pci.pdf) |
+| **Fotolito para Impressão** | Máscara fotográfica em vetor pronta para impressão em transparência (Insolação UV) | [Ver Fotolito](./fotolito_impressao.pdf) |
 
 ---
 
 ## 🔌 Resumo de Conexões e Mapeamento Elétrico
 
-### 1. Motor de Tração (BTS7960)
+### 1. Motor de Tração (F006WM0308)
 - **R_PWM / L_PWM:** Ligados aos pinos **D9** e **D10** do Arduino Uno (saídas PWM para controle de velocidade por rampa de aceleração e inversão de sentido).
-- **Alimentação de Potência:** Fonte externa dedicada para o motor de tração, com **GND unificado** ao Arduino.
+- **Alimentação de Potência:** Fonte externa dedicada para o motor, com **GND unificado** ao Arduino.
 
 ### 2. Barramento I2C (PCF8574 & Display LCD)
 - **SDA:** Conectado ao pino analógico **A4**.
