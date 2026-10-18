@@ -27,10 +27,10 @@ Projeto de automação e controle de um elevador de carga/passageiro utilizando 
 
 O circuito foi projetado para integrar a eletrônica de potência do acionamento do motor com o sistema de controle digital e sensores do elevador:
 
-* **Controle de Potência (BTS7960):** Conectado aos pinos PWM `D9` e `D10` do Arduino, permitindo o controle de aceleração, desaceleração e sentido de rotação do motor de tração.
-* **Expansão I2C (PCF8574):** Interconectado via barramento I2C (pinos `A4` SDA e `A5` SCL) para leitura dos botões de chamada e chaves fim de curso de cada andar.
-* **Mecanismos e Sinalização:** O sensor infravermelho aciona a trava de segurança das portas no pino `D8`, enquanto o módulo Bluetooth e o buzzer garantem conectividade sem fio e avisos sonoros de chegada aos andares.
-
+* **Controle de Potência (BTS7960):** Acionamento do motor de tração com suporte a aceleração, desaceleração e inversão de sentido.
+* **Expansão de I/O (PCF8574):** Gerenciamento da botoeira física e sinalização via barramento I2C, otimizando os pinos do microcontrolador.
+* **Sensores e Conectividade:** Sensores de posição, barreira infravermelha de porta, módulo Bluetooth e sinalização sonora (buzzer).
+  
 ---
 
 ## 🎛️ Placa de Circuito Impresso (Shield Customizado)
