@@ -12,7 +12,7 @@ Projeto de automação e controle de um elevador de carga/passageiro utilizando 
 * **Linguagem / Framework:** C++ com Framework Arduino (PlatformIO)
 * **Atuador Principal:** Motor DC com Driver Ponte H (BTS7960)
 * **Atuador de Portas:** Servomotor
-* **Display:** LCD I2C (20x4 / 16x2)
+* **Display:** LCD I2C (16x2)
 * **Comunicação:** Módulo Bluetooth
 * **Expansão de I/O:** Módulo PCF8574
 * **Supervisório:** Interface Web em HTML/CSS/JS
@@ -83,6 +83,8 @@ Elevador_Tcc/
 │   └── index.html        # Painel web de monitoramento
 └── platformio.ini        # Configurações de build e dependências
 
+---
+
 👥 Integrantes e Orientação
 
 👨‍🎓 Alunos Integrantes
@@ -104,6 +106,8 @@ Júlio César Silva
 Kauê Silva Ribeiro
 
 Miguel Oliveira de Moraes
+
+---
 
 👨‍🏫 Professor Orientador
 Prof. Nivaldo Bertozzo Junior
