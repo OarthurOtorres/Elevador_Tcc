@@ -9,13 +9,13 @@ Esta pasta armazena a documentação técnica oficial (*datasheets* em PDF, manu
 | Componente / Módulo | Modelo / CI Principal | Tensão / Comunicação | Função no Sistema | Arquivo PDF |
 | :--- | :--- | :--- | :--- | :--- |
 | **Microcontrolador** | ATmega328P (Arduino Uno) | 5V DC / 16 MHz | Processamento principal e lógica de controle em C++ | [Ver Datasheet](./arduino_uno.pdf) |
-| **Driver de Tração** | BTS7960 (Ponte H Dupla) | 5V (Lógica) / 12V-24V (Motor) | Controle de aceleração (PWM) e sentido do motor principal | [Ver Datasheet](./bts7960_driver.pdf) |
-| **Expansor de I/O** | PCF8574 | 2.5V - 6V DC / Barramento I2C (`0x27`) | Leitura da botoeira física e acionamento dos LEDs do painel | [Ver Datasheet](./pcf8574.pdf) |
-| **Módulo Bluetooth** | HC-05 | 3.3V - 5V DC / UART Serial (9600 baud) | Comunicação sem fio com o Supervisório Web (SCADA) | [Ver Datasheet](./hc05_bluetooth.pdf) |
+| **Driver de Tração** | BTS7960 (Ponte H Dupla) | 5V (Lógica) / 12V-24V (Motor) | Controle de aceleração (PWM) e sentido do motor principal | [Ver Datasheet](./ponte_h_bts7960.pdf) |
+| **Expansor de I/O** | PCF8574 | 2.5V - 6V DC / Barramento I2C (`0x27`) | Leitura da botoeira física e acionamento dos LEDs do painel | [Ver Datasheet](./expansor_pcf8574.pdf) |
+| **Módulo Bluetooth** | HC-05 | 3.3V - 5V DC / UART Serial (9600 baud) | Comunicação sem fio com o Supervisório Web (SCADA) | [Ver Datasheet](./modulo_bluetooth.PDF) |
 | **Display de Sinalização** | LCD 16x2 I2C | 5V DC / Barramento I2C | Exibição visual de andar, sentido e estado de emergência | [Ver Datasheet](./lcd_i2c.pdf) |
-| **Sensores de Andar** | Sensor Magnético Hall / Fim de Curso | 5V DC / Digital (Pull-Up) | Detecção da posição física da cabine nos andares (S1, S2, S3) | [Ver Datasheet](./sensor_hall.pdf) |
+| **Sensores de Andar** | Sensor Magnético Hall / Fim de Curso | 5V DC / Digital (Pull-Up) | Detecção da posição física da cabine nos andares (S1, S2, S3) | [Ver Datasheet](./sensor_hall.PDF) |
 | **Sensor de Porta** | Módulo IR de Barreira (FC-51) | 3.3V - 5V DC / Digital | Detecção de presença/obstrução na porta da cabine (Pino D8) | [Ver Datasheet (ES/EN)](./sensor_ir.pdf) |
-| **Atuador de Porta** | Micro Servomotor (MG90S) | 4.8V - 6V DC / Sinal PWM | Mecanismo de abertura e fechamento físico das portas | [Ver Datasheet](./servo_mg90s.pdf) |
+| **Atuador de Porta** | Micro Servomotor (MG90S) | 4.8V - 6V DC / Sinal PWM | Mecanismo de abertura e fechamento físico das portas | [Ver Datasheet](./servo_mg90s.PDF) |
 | **Sinalizador Sonoro** | Buzzer Passivo 5V | 5V DC / Frequência (Tone) | Emissão da sirene de emergência e som "Ding-Dong" | *Módulo Padrão 5V* |
 
 ---
