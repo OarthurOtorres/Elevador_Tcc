@@ -69,6 +69,9 @@ A interface do supervisório atua como um sistema de monitoramento em tempo real
 
 ```text
 Elevador_Tcc/
+├── docs/                 # Documentação técnica e guias do projeto
+│   ├── datasheets/       # PDFs dos componentes, esquemático e PCB
+│   └── COMO_EXECUTAR.md  # Passo a passo para compilar e rodar no VS Code
 ├── include/              # Arquivos de cabeçalho (.h)
 ├── src/                  # Código-fonte principal (.cpp)
 │   ├── main.cpp          # Loop principal do firmware
@@ -79,15 +82,18 @@ Elevador_Tcc/
 │   ├── Bluetooth.cpp     # Recepção de comandos via Bluetooth
 │   ├── Emergencia.cpp    # Sistema de parada de emergência
 │   └── DingDong.cpp      # Sinalização sonora de chegada ao andar
-├── Supervisorio_html/    # Interface do Supervisório SCADA
-│   └── index.html        # Painel web de monitoramento
-└── platformio.ini        # Configurações de build e dependências
+├── Supervisorio_html/    # Interface Web SCADA (HTML/CSS/JS)
+│   └── index.html        # Painel web de monitoramento e controle
+└── platformio.ini        # Configurações de build e dependências do PlatformIO
+```
+>📖 Guia de Instalação:
+>Para ver o tutorial completo de como baixar o código e compilar no VS Code, acesse o Guia de Execução e Instalação.
 
 ---
 
-👥 Integrantes e Orientação
+## 👥 Integrantes e Orientação
 
-👨‍🎓 Alunos Integrantes
+### 👨‍🎓 Alunos Integrantes
 
 Arthur Oliveira Torres
 
@@ -107,7 +113,6 @@ Kauê Silva Ribeiro
 
 Miguel Oliveira de Moraes
 
----
+### 👨‍🏫 Professor Orientador
 
-👨‍🏫 Professor Orientador
 Prof. Nivaldo Bertozzo Junior
