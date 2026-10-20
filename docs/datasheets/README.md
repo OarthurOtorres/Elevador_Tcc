@@ -62,4 +62,11 @@ Os ficheiros de projeto da Placa de Circuito Impresso (PCI) desenvolvida no soft
    
 ---
 
-[⬅️ Voltar para o README Principal](../../README.md)
+### 🔗 Acesse também:
+
+💬 **Comunidade:** Tem alguma dúvida, problema na compilação ou ideia de melhoria? Participe na nossa aba de [Discussões do Repositório](https://github.com/OarthurOtorres/Elevador_Tcc/discussions).
+
+📌 **Navegação do Repositório:**  
+
+[⬅️ Voltar ao README Principal](../README.md) | [📄 Ver Datasheets e Circuito Elétrico](./datasheets/README.md)
+
