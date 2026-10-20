@@ -97,4 +97,4 @@ Agora você já pode realizar chamadas de andares, monitorar o deslocamento da c
 
 📌 **Navegação do Repositório:**  
 
-[⬅️ Voltar ao README Principal](../README.md) | [📄 Ver Datasheets e Circuito Elétrico](./datasheets/README.md)
+[⬅️ Voltar ao README Principal](../README.md) | [📄 Ver Datasheets e Circuito Elétrico](./datasheets/ANEXOS.md)
