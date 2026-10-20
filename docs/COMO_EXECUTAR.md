@@ -91,6 +91,10 @@ Agora você já pode realizar chamadas de andares, monitorar o deslocamento da c
 
 ---
 
+### 🔗 Acesse também:
+
 💬 **Comunidade:** Tem alguma dúvida, problema na compilação ou ideia de melhoria? Participe na nossa aba de [Discussões do Repositório](https://github.com/OarthurOtorres/Elevador_Tcc/discussions).
 
-[⬅️ Voltar para o README Principal](../README.md)
+📌 **Navegação do Repositório:**  
+
+[⬅️ Voltar ao README Principal](../README.md) | [📄 Ver Datasheets e Circuito Elétrico](./datasheets/README.md)
