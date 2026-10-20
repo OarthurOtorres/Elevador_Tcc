@@ -17,7 +17,7 @@ Projeto de automação e controle de um elevador de carga/passageiro utilizando 
 * **Expansão de I/O:** Módulo PCF8574
 * **Supervisório:** Interface Web em HTML/CSS/JS
 
-> 📄 **Documentação de Hardware:** Para consultar os manuais técnicos, tensão de operação e PDFs dos componentes utilizados, acesse nosso [Guia de Datasheets e Conexões](./docs/datasheets/README.md).
+> 📄 **Documentação de Hardware:** Para consultar os manuais técnicos, tensão de operação e PDFs dos componentes utilizados, acesse nosso [Guia de Datasheets e Conexões](./docs/datasheets/ANEXOS.md).
 
 ---
 
