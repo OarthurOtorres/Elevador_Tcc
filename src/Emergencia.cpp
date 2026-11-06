@@ -26,10 +26,12 @@ void ParadaEmergencia() {
   unsigned long tempoAtual = millis();
   
   // FILTRO ANTI-RUÍDO DO MOTOR:
-  // Só aceita o disparo se passaram mais de 150ms desde o último ruído/interrupção
+  // Só aceita o disparo se o botão estiver REALMENTE pressionado (LOW)
   if (tempoAtual - ultimoTempoEmergencia > TEMPO_DEBOUNCE) {
-    emergenciaAtivada = true; 
-    ultimoTempoEmergencia = tempoAtual;
+    if (digitalRead(BtEmergencia) == LOW) { 
+      emergenciaAtivada = true; 
+      ultimoTempoEmergencia = tempoAtual;
+    }
   }
 }
 
@@ -37,12 +39,13 @@ void ResetEmergencia() {
   unsigned long tempoAtual = millis();
   
   if (tempoAtual - ultimoTempoReset > TEMPO_DEBOUNCE) {
-    // Confirma se o botão de emergência REALMENTE não está pressionado (HIGH = Solto)
-    if (digitalRead(BtEmergencia) == HIGH) { 
+    // CORREÇÃO CRÍTICA: Só reseta se o botão físico de Reset estiver REALMENTE pressionado (LOW)
+    // E o botão físico de emergência estiver solto (HIGH)
+    if (digitalRead(BtReset) == LOW && digitalRead(BtEmergencia) == HIGH) { 
       emergenciaAtivada = false;
+      ultimoTempoReset = tempoAtual;
       Serial.println("E:0"); // Avisa o supervisório que voltou ao Normal
     }
-    ultimoTempoReset = tempoAtual;
   }
 }
 

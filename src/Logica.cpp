@@ -36,21 +36,20 @@ bool lerSensorComFiltro(int pino) {
   return (contagemLow >= 4);
 }
 
+// CORREÇÃO CRÍTICA: sensorAtivo passa a usar o filtro contra ruídos em vez de leitura direta
 bool sensorAtivo(int andar) {
-  if (andar == 1) return digitalRead(S1) == LOW;
-  if (andar == 2) return digitalRead(S2) == LOW;
-  if (andar == 3) return digitalRead(S3) == LOW;
+  if (andar == 1) return lerSensorComFiltro(S1);
+  if (andar == 2) return lerSensorComFiltro(S2);
+  if (andar == 3) return lerSensorComFiltro(S3);
   return false;
 }
 
 void executarHoming() {
-  // 1. Exibe no LCD que está em referenciamento e envia log via Bluetooth
   lcdReferenciando();
   enviarLog("Elevador em Referenciamento...");
   
   ligarMotorDescer();
   
-  // Desce até encontrar QUALQUER um dos 3 sensores
   while (!sensorAtivo(1) && !sensorAtivo(2) && !sensorAtivo(3)) {
     atualizarRampaMotor();
     delay(10);
@@ -58,14 +57,12 @@ void executarHoming() {
   
   pararMotor();
 
-  // Identifica qual sensor foi atingido durante a descida de resgate
   if (sensorAtivo(1)) andarAtual = 1;
   else if (sensorAtivo(2)) andarAtual = 2;
   else if (sensorAtivo(3)) andarAtual = 3;
 
   andarDestino = andarAtual;
 
-  // 2. Atualiza a tela para PARADO e envia log com o andar correto
   lcdParado();
   enviarLog("Elevador Parado no " + String(andarAtual) + "º Andar");
 }
@@ -83,7 +80,6 @@ void detectarAndarInicial() {
     andarAtual = 3;
     andarDestino = 3;
   } else {
-    // NENHUM SENSOR ATIVO (parou entre andares por falta de energia)
     executarHoming();
   }
 }
@@ -95,12 +91,10 @@ void initBtsESensores() {
 
   Wire.begin();
 
-  // Inicializa a comunicação I2C
   Wire.beginTransmission(PCF_ADDR);
   Wire.write(0b01101101);
   Wire.endTransmission();
 
-  // Detecta o andar ou executa a busca de posição (Homing)
   detectarAndarInicial();
 }
 

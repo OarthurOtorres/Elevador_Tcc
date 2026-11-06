@@ -10,6 +10,7 @@
 #include <Wire.h>
 
 unsigned long tempoParada = 0;
+unsigned long tempoUltimaPassagemAndar = 0; // Temporizador não-bloqueante para troca de andar
 bool comandoPortaEnviado = false;
 bool emergenciasTratadas = false;
 int estadoAnteriorLog = -1;
@@ -79,19 +80,21 @@ void loop() {
         ligarMotorSubir();
         lcdSubindo();
 
-        if (sensorAtivo(andarAtual + 1)) {
+        // CORREÇÃO: Substituição do delay(600) bloqueante por controle via millis()
+        if (sensorAtivo(andarAtual + 1) && (millis() - tempoUltimaPassagemAndar > 600)) {
           andarAtual++;
+          tempoUltimaPassagemAndar = millis();
           enviarLog("Passando pelo " + String(andarAtual) + "º Andar");
-          delay(600); 
         }
       } else if (andarDestino < andarAtual) {
         ligarMotorDescer();
         lcdDescendo();
 
-        if (sensorAtivo(andarAtual - 1)) {
+        // CORREÇÃO: Substituição do delay(600) bloqueante por controle via millis()
+        if (sensorAtivo(andarAtual - 1) && (millis() - tempoUltimaPassagemAndar > 600)) {
           andarAtual--;
+          tempoUltimaPassagemAndar = millis();
           enviarLog("Passando pelo " + String(andarAtual) + "º Andar");
-          delay(600); 
         }
       }
 
