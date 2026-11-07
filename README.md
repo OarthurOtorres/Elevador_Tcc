@@ -82,7 +82,7 @@ Elevador_Tcc/
 └── platformio.ini        # Configurações de build e dependências
 ```
 >📖 Guia de Instalação:
->Para ver o tutorial completo de como baixar o código e compilar no VS Code, acesse o Guia de Execução e Instalação.
+>Para ver o tutorial completo de como baixar o código e compilar no VS Code, acesse o [Guia de Execução e Instalação](docs/ComoExecutar.md).
 
 ---
 
