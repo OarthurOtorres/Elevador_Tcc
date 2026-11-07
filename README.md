@@ -39,7 +39,7 @@ O circuito foi projetado para integrar a eletrônica de potência do acionamento
 - **Expansão I2C (PCF8574):** Interconectado via barramento I2C (pinos `A4` SDA e `A5` SCL) para leitura dos botões de chamada e chaves fim de curso de cada andar.
 - **Mecanismos e Sinalização:** O sensor infravermelho aciona a trava de segurança das portas no pino `D8`, enquanto o módulo Bluetooth e o buzzer garantem conectividade sem fio e avisos sonoros de chegada aos andares.
 
->Para ter acesso a documentação completa acesse [📄 Ver Datasheets e Circuito Elétrico](./datasheets/Documentação.md).
+>Para ter acesso a documentação completa acesse [📄 Ver Datasheets e Circuito Elétrico](./docs/datasheets/Documentação.md).
 
 ---
 
