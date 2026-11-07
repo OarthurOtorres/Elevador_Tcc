@@ -39,4 +39,4 @@ Os arquivos de projeto da Placa de Circuito Impresso (PCI) desenvolvida no softw
 💬 **Comunidade:** Tem alguma dúvida, problema na compilação ou ideia de melhoria? Participe na nossa aba de [Discussões do Repositório](https://github.com/OarthurOtorres/Elevador_Tcc/discussions).
 
 📌 **Navegação do Repositório:**  
-[⬅️ Voltar ao README Principal](../../README.md) | [ Ver Guia de Execução no VS Code](../COMO_EXECUTAR.md)
+[⬅️ Voltar ao README Principal](../../README.md) | [ Ver Guia de Execução no VS Code](../ComoExecutar.md)
