@@ -18,25 +18,24 @@ int andarDestino = 0;
 int estado = 0;
 int direcaoAtual = 0;
 
-// Definição real e alocação de memória da variável global
 unsigned int totalViagensAcumuladas = 0;
 
 void registrarViagemConcluida() {
   totalViagensAcumuladas++;
 }
 
+// Otimização: Leitura rápida por amostragem sem travamento de delay
 bool lerSensorComFiltro(int pino) {
   int contagemLow = 0;
-  for (int i = 0; i < 5; i++) {
+  for (int i = 0; i < 4; i++) {
     if (digitalRead(pino) == LOW) {
       contagemLow++;
     }
-    delay(10);
+    delayMicroseconds(300);
   }
-  return (contagemLow >= 4);
+  return (contagemLow >= 3);
 }
 
-// CORREÇÃO CRÍTICA: sensorAtivo passa a usar o filtro contra ruídos em vez de leitura direta
 bool sensorAtivo(int andar) {
   if (andar == 1) return lerSensorComFiltro(S1);
   if (andar == 2) return lerSensorComFiltro(S2);
@@ -52,7 +51,7 @@ void executarHoming() {
   
   while (!sensorAtivo(1) && !sensorAtivo(2) && !sensorAtivo(3)) {
     atualizarRampaMotor();
-    delay(10);
+    delay(5);
   }
   
   pararMotor();
@@ -68,7 +67,7 @@ void executarHoming() {
 }
 
 void detectarAndarInicial() {
-  delay(200); // Tempo para estabilização elétrica dos sensores
+  delay(100); 
 
   if (lerSensorComFiltro(S1)) {
     andarAtual = 1;
@@ -100,7 +99,7 @@ void initBtsESensores() {
 
 void atualizarLedsBotoes() {
   for (int i = 1; i <= 3; i++) {
-    if (sensorAtivo(i)) {
+    if (sensorAtivo(i) && estado != 0) {
       chamada[i] = false;
     }
   }
@@ -126,9 +125,10 @@ void lerBotoes() {
   bool bt2Pressionado = !(leitura & (1 << 3));
   bool bt3Pressionado = !(leitura & (1 << 6));
 
-  if (bt1Pressionado && !sensorAtivo(1)) chamada[1] = true;
-  if (bt2Pressionado && !sensorAtivo(2)) chamada[2] = true;
-  if (bt3Pressionado && !sensorAtivo(3)) chamada[3] = true;
+  // Permite registrar a chamada mesmo se for no andar atual (para abrir a porta em standby)
+  if (bt1Pressionado) chamada[1] = true;
+  if (bt2Pressionado) chamada[2] = true;
+  if (bt3Pressionado) chamada[3] = true;
 
   atualizarLedsBotoes();
 }

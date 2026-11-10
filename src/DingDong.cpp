@@ -8,9 +8,8 @@ static EstadoDD estadoDD = DD_IDLE;
 static unsigned long tempoDD = 0;
 
 static bool sireneAtiva = false;
-static int freqSirene = 400;
-static bool subindoSirene = true;
 static unsigned long tempoSirene = 0;
+static bool alternadorTomSirene = false;
 
 static bool alertaObstrucao = false;
 static unsigned long tempoAlerta = 0;
@@ -33,8 +32,7 @@ void setSireneEmergencia(bool ativa) {
   sireneAtiva = ativa;
   if (!sireneAtiva) {
     noTone(BUZZER_PIN);
-    freqSirene = 400;
-    subindoSirene = true;
+    alternadorTomSirene = false;
   } else {
     estadoDD = DD_IDLE;
   }
@@ -53,18 +51,15 @@ void setAlertaObstrucao(bool ativo) {
 void atualizarDingDong() {
   unsigned long agora = millis();
 
-  // PRIORIDADE 1: SIRENE DE EMERGÊNCIA
+  // PRIORIDADE 1: SIRENE DE EMERGÊNCIA (ALARME DE INCÊNDIO INDUSTIAL - TOM DUPLO INTERMITENTE)
   if (sireneAtiva) {
-    if (agora - tempoSirene >= 5) {
+    if (agora - tempoSirene >= 120) {
       tempoSirene = agora;
-      tone(BUZZER_PIN, freqSirene);
-
-      if (subindoSirene) {
-        freqSirene += 10;
-        if (freqSirene >= 1200) subindoSirene = false;
+      alternadorTomSirene = !alternadorTomSirene;
+      if (alternadorTomSirene) {
+        tone(BUZZER_PIN, 1000); // Frequência Alta
       } else {
-        freqSirene -= 10;
-        if (freqSirene <= 400) subindoSirene = true;
+        tone(BUZZER_PIN, 850);  // Frequência Baixa
       }
     }
     return;
@@ -88,7 +83,7 @@ void atualizarDingDong() {
   // PRIORIDADE 3: CAMPAINHA DING-DONG
   switch (estadoDD) {
     case DD_DING:
-      if (agora - tempoDD >= 300) {
+      if (agora - tempoDD >= 350) {
         estadoDD = DD_DONG;
         tempoDD = agora;
         tone(BUZZER_PIN, 1046);
@@ -96,7 +91,7 @@ void atualizarDingDong() {
       break;
 
     case DD_DONG:
-      if (agora - tempoDD >= 700) {
+      if (agora - tempoDD >= 650) {
         estadoDD = DD_IDLE;
         noTone(BUZZER_PIN);
       }

@@ -10,16 +10,16 @@
 #include <Wire.h>
 
 unsigned long tempoParada = 0;
-unsigned long tempoUltimaPassagemAndar = 0; // Temporizador não-bloqueante para troca de andar
+unsigned long tempoUltimaPassagemAndar = 0; 
 bool comandoPortaEnviado = false;
 bool emergenciasTratadas = false;
 int estadoAnteriorLog = -1;
 
 void setup() {
   inicializarMotor();
-  BluetoothInit();      // 1. Inicializa o Bluetooth primeiro para os logs do Homing
-  lcdInit();            // 2. Inicializa o LCD antes do Homing para exibir "REFERENC"
-  initBtsESensores();   // 3. Agora o Homing pode usar a tela LCD e o Bluetooth
+  BluetoothInit();      
+  lcdInit();            
+  initBtsESensores();   
   EmergenciaInit();
   inicializarPortas();
   initDingDong();
@@ -38,19 +38,19 @@ void loop() {
     
     if (emergenciasTratadas == true) { 
       pararMotor();
-      setSireneEmergencia(false); // Desliga sirene física
+      setSireneEmergencia(false); 
       restaurarPortasAposEmergencia(andarAtual);
-      desligarLedReset(); // Já zera a telaEmergenciaEscrita internamente no Display.cpp
+      desligarLedReset(); 
       emergenciasTratadas = false;
       estado = 0;
       enviarLog("Emergência normalizada. Elevador pronto.");
-      enviarLog("*X0"); // Notifica o supervisório web para PARAR a sirene
+      enviarLog("*X0"); 
     }
 
     lerBotoes();
     atualizarLedsBotoes();
 
-    if (estado == 0) { // PARADO
+    if (estado == 0) { // PARADO (STANDBY)
       lcdParado();
 
       if (estadoAnteriorLog != 0) {
@@ -58,19 +58,29 @@ void loop() {
         estadoAnteriorLog = 0;
       }
 
+      // Se houver chamada para o mesmo andar em que está parado, abre a porta
       if (chamada[andarAtual] == true) {
         chamada[andarAtual] = false; 
         comandoPortaEnviado = false; 
-        estado = 2;                   
+        estado = 2; // Transita para ABRIR PORTA             
       } else {
         andarDestino = escolherProximoAndar();
         
+        // INTERTRAVAMENTO: Só transita para MOVENDO se as portas estiverem 100% FECHADAS
         if (andarDestino != 0 && andarDestino != andarAtual) {
-          estado = 1; 
+          if (portaEstaTotalmenteFechada()) {
+            estado = 1; 
+          }
         }
       }
 
     } else if (estado == 1) { // MOVENDO
+      // INTERTRAVAMENTO EM MOVIMENTO: Se a porta abrir por qualquer motivo, para o motor imediatamente
+      if (!portaEstaTotalmenteFechada()) {
+        pararMotor();
+        return;
+      }
+
       if (estadoAnteriorLog != 1) {
         enviarLog("Elevador em Movimento para o " + String(andarDestino) + "º Andar");
         estadoAnteriorLog = 1;
@@ -80,7 +90,6 @@ void loop() {
         ligarMotorSubir();
         lcdSubindo();
 
-        // CORREÇÃO: Substituição do delay(600) bloqueante por controle via millis()
         if (sensorAtivo(andarAtual + 1) && (millis() - tempoUltimaPassagemAndar > 600)) {
           andarAtual++;
           tempoUltimaPassagemAndar = millis();
@@ -90,7 +99,6 @@ void loop() {
         ligarMotorDescer();
         lcdDescendo();
 
-        // CORREÇÃO: Substituição do delay(600) bloqueante por controle via millis()
         if (sensorAtivo(andarAtual - 1) && (millis() - tempoUltimaPassagemAndar > 600)) {
           andarAtual--;
           tempoUltimaPassagemAndar = millis();
@@ -104,9 +112,8 @@ void loop() {
 
         pararMotor();
         
-        // --- CONTABILIZAÇÃO DA VIAGEM ---
-        registrarViagemConcluida(); // Incremente no C++
-        enviarLog("*V" + String(totalViagensAcumuladas)); // Atualiza o contador no Supervisório Web
+        registrarViagemConcluida(); 
+        enviarLog("*V" + String(totalViagensAcumuladas)); 
         
         chamada[andarAtual] = false; 
         comandoPortaEnviado = false; 
@@ -124,8 +131,8 @@ void loop() {
 
       if (!comandoPortaEnviado) {
         comandarAberturaPorta(andarAtual); 
-        tocarDingDong(); // Som físico do elevador
-        enviarLog("*P1"); // Sinaliza abertura de porta e dispara som Ding-Dong na web
+        tocarDingDong(); 
+        enviarLog("*P1"); 
         comandoPortaEnviado = true;
       }
 
@@ -139,11 +146,11 @@ void loop() {
   } else { // MODO EMERGÊNCIA ATIVO
     if (emergenciasTratadas == false) {
       pararMotor();
-      setSireneEmergencia(true); // Liga sirene física
+      setSireneEmergencia(true); 
       ativarPortaEmergencia(andarAtual);
       emergenciasTratadas = true;
       enviarLog("PERIGO: Emergência Ativada!");
-      enviarLog("*X1"); // Notifica o supervisório web para DISPARAR a sirene contínua
+      enviarLog("*X1"); 
       estadoAnteriorLog = -1;
     }
 
