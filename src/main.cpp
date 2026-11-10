@@ -13,6 +13,7 @@ unsigned long tempoParada = 0;
 unsigned long tempoUltimaPassagemAndar = 0; 
 bool comandoPortaEnviado = false;
 bool emergenciasTratadas = false;
+bool tocarSomAoAbrir = true; // Controle para silenciar o buzzer em chamadas de mesmo andar em standby
 int estadoAnteriorLog = -1;
 
 void setup() {
@@ -39,7 +40,7 @@ void loop() {
     if (emergenciasTratadas == true) { 
       pararMotor();
       setSireneEmergencia(false); 
-      restaurarPortasAposEmergencia(andarAtual);
+      restaurarPortasAposEmergencia(andarAtual); // Fecha a porta suavemente ao resetar
       desligarLedReset(); 
       emergenciasTratadas = false;
       estado = 0;
@@ -58,15 +59,14 @@ void loop() {
         estadoAnteriorLog = 0;
       }
 
-      // Se houver chamada para o mesmo andar em que está parado, abre a porta
       if (chamada[andarAtual] == true) {
         chamada[andarAtual] = false; 
         comandoPortaEnviado = false; 
-        estado = 2; // Transita para ABRIR PORTA             
+        tocarSomAoAbrir = false; // CHAMADA NO MESMO ANDAR EM STANDBY: NÃO TOCA DING-DONG OU SIRENE
+        estado = 2; 
       } else {
         andarDestino = escolherProximoAndar();
         
-        // INTERTRAVAMENTO: Só transita para MOVENDO se as portas estiverem 100% FECHADAS
         if (andarDestino != 0 && andarDestino != andarAtual) {
           if (portaEstaTotalmenteFechada()) {
             estado = 1; 
@@ -75,7 +75,6 @@ void loop() {
       }
 
     } else if (estado == 1) { // MOVENDO
-      // INTERTRAVAMENTO EM MOVIMENTO: Se a porta abrir por qualquer motivo, para o motor imediatamente
       if (!portaEstaTotalmenteFechada()) {
         pararMotor();
         return;
@@ -117,6 +116,7 @@ void loop() {
         
         chamada[andarAtual] = false; 
         comandoPortaEnviado = false; 
+        tocarSomAoAbrir = true; // CHEGADA DE VIAGEM: TOCA DING-DONG
         estado = 2;                   
       }
 
@@ -131,7 +131,9 @@ void loop() {
 
       if (!comandoPortaEnviado) {
         comandarAberturaPorta(andarAtual); 
-        tocarDingDong(); 
+        if (tocarSomAoAbrir) {
+          tocarDingDong(); // Só toca se for chegada de viagem
+        }
         enviarLog("*P1"); 
         comandoPortaEnviado = true;
       }
@@ -147,7 +149,7 @@ void loop() {
     if (emergenciasTratadas == false) {
       pararMotor();
       setSireneEmergencia(true); 
-      ativarPortaEmergencia(andarAtual);
+      ativarPortaEmergencia(andarAtual); // Abre a porta e mantendo-a aberta
       emergenciasTratadas = true;
       enviarLog("PERIGO: Emergência Ativada!");
       enviarLog("*X1"); 

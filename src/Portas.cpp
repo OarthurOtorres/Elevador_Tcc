@@ -13,27 +13,32 @@
 const int ANGULO_FECHADO_P1 = 5;
 const int ANGULO_ABERTO_P1  = 95;
 
-const int ANGULO_FECHADO_P2 = 5;  // Ajustado para 5, 95
-const int ANGULO_ABERTO_P2  = 95;
+const int ANGULO_FECHADO_P2 = 0;   // Ajustado para 0, 90
+const int ANGULO_ABERTO_P2  = 90;
 
 const int ANGULO_FECHADO_P3 = 5;
 const int ANGULO_ABERTO_P3  = 95;
 
-const unsigned long TEMPO_MOVIMENTO_TOTAL = 1500; // Tempo de abertura/fechamento
-const unsigned long TEMPO_PORTA_ABERTA     = 6000; // Tempo mantendo a porta aberta
+const unsigned long TEMPO_MOVIMENTO_TOTAL = 1500; // Tempo total de percurso completo (ms)
+const unsigned long TEMPO_PORTA_ABERTA     = 6000; // Tempo da porta aberta (ms)
 
 enum EstadoPorta {
   PORTA_FECHADA,
   PORTA_ABRINDO,
   PORTA_ABERTA,
-  PORTA_FECHANDO
+  PORTA_FECHANDO,
+  PORTA_EMERGENCIA
 };
 
 static EstadoPorta estadoAtualPorta = PORTA_FECHADA;
 static int andarAtualPorta = 1;
 static unsigned long tempoInicioEstado = 0;
+static unsigned long tempoDuracaoEstado = 1500;
 static unsigned long tempoInicioObstrucao = 0;
-static float anguloInicioMovimento = 0;
+
+static float anguloOrigemMovimento = 0;
+static float anguloDestinoMovimento = 0;
+static float anguloAtualServo = 0;
 
 Servo servoP1;
 Servo servoP2;
@@ -79,15 +84,29 @@ void inicializarPortas() {
   servoP2.write(ANGULO_FECHADO_P2);
   servoP3.write(ANGULO_FECHADO_P3);
 
+  anguloAtualServo = ANGULO_FECHADO_P1;
   estadoAtualPorta = PORTA_FECHADA;
 }
 
-void comandarAberturaPorta(int andar) {
+// Inicia um movimento suave sem saltos a partir da posição atual do servo
+void iniciarMovimentoPorta(int andar, float angDestino) {
   andarAtualPorta = andar;
-  estadoAtualPorta = PORTA_ABRINDO;
+  float angFechado = getAnguloFechado(andar);
+  float angAberto = getAnguloAberto(andar);
+  float cursoTotal = abs(angAberto - angFechado);
+
+  anguloOrigemMovimento = anguloAtualServo;
+  anguloDestinoMovimento = angDestino;
+  
+  float distancia = abs(anguloDestinoMovimento - anguloOrigemMovimento);
+  if (cursoTotal > 0) {
+    tempoDuracaoEstado = (distancia / cursoTotal) * TEMPO_MOVIMENTO_TOTAL;
+  } else {
+    tempoDuracaoEstado = TEMPO_MOVIMENTO_TOTAL;
+  }
+  if (tempoDuracaoEstado < 50) tempoDuracaoEstado = 50;
+
   tempoInicioEstado = millis();
-  tempoInicioObstrucao = 0;
-  anguloInicioMovimento = getAnguloFechado(andar);
 
   Servo* s = getServoAndar(andarAtualPorta);
   if (!s->attached()) {
@@ -96,12 +115,20 @@ void comandarAberturaPorta(int andar) {
   }
 }
 
+void comandarAberturaPorta(int andar) {
+  if (estadoAtualPorta != PORTA_ABRINDO && estadoAtualPorta != PORTA_ABERTA) {
+    if (estadoAtualPorta == PORTA_FECHADA) {
+      anguloAtualServo = getAnguloFechado(andar);
+    }
+    iniciarMovimentoPorta(andar, getAnguloAberto(andar));
+    estadoAtualPorta = PORTA_ABRINDO;
+    tempoInicioObstrucao = 0;
+  }
+}
+
 void gerenciarMaquinaPortas() {
   unsigned long agora = millis();
   bool haObstaculo = sensorObstaculoAtivo();
-
-  int angFechado = getAnguloFechado(andarAtualPorta);
-  int angAberto  = getAnguloAberto(andarAtualPorta);
   Servo* s = getServoAndar(andarAtualPorta);
 
   switch (estadoAtualPorta) {
@@ -112,22 +139,23 @@ void gerenciarMaquinaPortas() {
       break;
 
     case PORTA_ABRINDO: {
-      float progresso = (float)(agora - tempoInicioEstado) / (float)TEMPO_MOVIMENTO_TOTAL;
+      float progresso = (float)(agora - tempoInicioEstado) / (float)tempoDuracaoEstado;
       if (progresso >= 1.0f) {
         progresso = 1.0f;
+        anguloAtualServo = anguloDestinoMovimento;
         estadoAtualPorta = PORTA_ABERTA;
         tempoInicioEstado = agora;
         tempoInicioObstrucao = 0;
+      } else {
+        anguloAtualServo = anguloOrigemMovimento + (anguloDestinoMovimento - anguloOrigemMovimento) * progresso;
       }
-      
-      int anguloCalculado = angFechado + (int)((angAberto - angFechado) * progresso);
-      s->write(anguloCalculado);
+      s->write((int)anguloAtualServo);
       break;
     }
 
     case PORTA_ABERTA:
       if (haObstaculo) {
-        tempoInicioEstado = agora; // Reinicia a contagem dos 6 segundos de porta aberta
+        tempoInicioEstado = agora; // Reinicia temporizador da porta aberta
 
         if (tempoInicioObstrucao == 0) {
           tempoInicioObstrucao = agora;
@@ -141,6 +169,7 @@ void gerenciarMaquinaPortas() {
         setAlertaObstrucao(false);
 
         if (agora - tempoInicioEstado >= TEMPO_PORTA_ABERTA) {
+          iniciarMovimentoPorta(andarAtualPorta, getAnguloFechado(andarAtualPorta));
           estadoAtualPorta = PORTA_FECHANDO;
           tempoInicioEstado = agora;
         }
@@ -148,24 +177,38 @@ void gerenciarMaquinaPortas() {
       break;
 
     case PORTA_FECHANDO: {
-      if (haObstaculo) { // Reabertura suave imediata ao ler obstáculo
-        estadoAtualPorta = PORTA_ABRINDO;
-        tempoInicioEstado = agora;
-        tempoInicioObstrucao = agora;
+      if (haObstaculo) { // Obstáculo detectado durante fechamento: Reabre suavemente sem dar tranco
         setAlertaObstrucao(false);
+        iniciarMovimentoPorta(andarAtualPorta, getAnguloAberto(andarAtualPorta));
+        estadoAtualPorta = PORTA_ABRINDO;
+        tempoInicioObstrucao = agora;
         break;
       }
 
-      float progresso = (float)(agora - tempoInicioEstado) / (float)TEMPO_MOVIMENTO_TOTAL;
+      float progresso = (float)(agora - tempoInicioEstado) / (float)tempoDuracaoEstado;
       if (progresso >= 1.0f) {
         progresso = 1.0f;
+        anguloAtualServo = anguloDestinoMovimento;
         estadoAtualPorta = PORTA_FECHADA;
         setAlertaObstrucao(false);
         tempoInicioObstrucao = 0;
+      } else {
+        anguloAtualServo = anguloOrigemMovimento + (anguloDestinoMovimento - anguloOrigemMovimento) * progresso;
       }
+      s->write((int)anguloAtualServo);
+      break;
+    }
 
-      int anguloCalculado = angAberto - (int)((angAberto - angFechado) * progresso);
-      s->write(anguloCalculado);
+    case PORTA_EMERGENCIA: {
+      // Abre suavemente até a posição aberta e se mantém aberta até o Reset
+      float progresso = (float)(agora - tempoInicioEstado) / (float)tempoDuracaoEstado;
+      if (progresso >= 1.0f) {
+        progresso = 1.0f;
+        anguloAtualServo = anguloDestinoMovimento;
+      } else {
+        anguloAtualServo = anguloOrigemMovimento + (anguloDestinoMovimento - anguloOrigemMovimento) * progresso;
+      }
+      s->write((int)anguloAtualServo);
       break;
     }
   }
@@ -181,11 +224,12 @@ bool portaEstaAberta() {
 
 void ativarPortaEmergencia(int andar) {
   setAlertaObstrucao(false);
-  comandarAberturaPorta(andar); // Abre suavemente na emergência (1500 ms)
+  iniciarMovimentoPorta(andar, getAnguloAberto(andar));
+  estadoAtualPorta = PORTA_EMERGENCIA;
 }
 
 void restaurarPortasAposEmergencia(int andar) {
-  andarAtualPorta = andar;
-  estadoAtualPorta = PORTA_FECHANDO; // Fecha suavemente ao resetar (1500 ms)
-  tempoInicioEstado = millis();
+  setAlertaObstrucao(false);
+  iniciarMovimentoPorta(andar, getAnguloFechado(andar));
+  estadoAtualPorta = PORTA_FECHANDO;
 }

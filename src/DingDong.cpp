@@ -8,8 +8,9 @@ static EstadoDD estadoDD = DD_IDLE;
 static unsigned long tempoDD = 0;
 
 static bool sireneAtiva = false;
+static int freqSirene = 500;
+static bool subindoSirene = true;
 static unsigned long tempoSirene = 0;
-static bool alternadorTomSirene = false;
 
 static bool alertaObstrucao = false;
 static unsigned long tempoAlerta = 0;
@@ -32,7 +33,8 @@ void setSireneEmergencia(bool ativa) {
   sireneAtiva = ativa;
   if (!sireneAtiva) {
     noTone(BUZZER_PIN);
-    alternadorTomSirene = false;
+    freqSirene = 500;
+    subindoSirene = true;
   } else {
     estadoDD = DD_IDLE;
   }
@@ -51,15 +53,18 @@ void setAlertaObstrucao(bool ativo) {
 void atualizarDingDong() {
   unsigned long agora = millis();
 
-  // PRIORIDADE 1: SIRENE DE EMERGÊNCIA (ALARME DE INCÊNDIO INDUSTIAL - TOM DUPLO INTERMITENTE)
+  // PRIORIDADE 1: SIRENE DE EMERGÊNCIA (SIRENE DE AMBULÂNCIA - VARREDURA SUAVE DE 500Hz A 1200Hz)
   if (sireneAtiva) {
-    if (agora - tempoSirene >= 120) {
+    if (agora - tempoSirene >= 10) {
       tempoSirene = agora;
-      alternadorTomSirene = !alternadorTomSirene;
-      if (alternadorTomSirene) {
-        tone(BUZZER_PIN, 1000); // Frequência Alta
+      tone(BUZZER_PIN, freqSirene);
+
+      if (subindoSirene) {
+        freqSirene += 15;
+        if (freqSirene >= 1200) subindoSirene = false;
       } else {
-        tone(BUZZER_PIN, 850);  // Frequência Baixa
+        freqSirene -= 15;
+        if (freqSirene <= 500) subindoSirene = true;
       }
     }
     return;
