@@ -1,13 +1,14 @@
-#ifndef Emergencia_h
-#define Emergencia_h
+#ifndef EMERGENCIA_H
+#define EMERGENCIA_H
 
-// Variável para armazenar o estado do botão de emergência
+#include <Arduino.h>
+
 extern volatile bool emergenciaAtivada;
 
-// Funcoes relacionadas ao botão de emergência
 void EmergenciaInit();
 void ParadaEmergencia();
-void rotinaSeguranca();
 void ResetEmergencia();
+bool tentarResetarSistema(); // Função de validação de reset
+void rotinaSeguranca();
 
 #endif

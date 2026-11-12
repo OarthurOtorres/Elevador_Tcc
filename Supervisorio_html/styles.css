@@ -1,15 +1,8 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* Animação para o fundo piscar em tom de alerta vermelho na emergência */
 @keyframes piscarEmergenciaFundo {
-    0%, 100% { 
-        background-color: #1a1a1e; 
-        box-shadow: inset 0 0 0px rgba(255, 0, 0, 0);
-    }
-    50% { 
-        background-color: #400505; 
-        box-shadow: inset 0 0 80px rgba(255, 0, 0, 0.5);
-    }
+    0%, 100% { background-color: #1a1a1e; box-shadow: inset 0 0 0px rgba(255, 0, 0, 0); }
+    50% { background-color: #400505; box-shadow: inset 0 0 80px rgba(255, 0, 0, 0.5); }
 }
 
 body {
@@ -26,10 +19,7 @@ body {
     transition: background-color 0.3s ease;
 }
 
-/* Classe ativada quando em emergência */
-body.emergencia-ativa {
-    animation: piscarEmergenciaFundo 0.8s infinite;
-}
+body.emergencia-ativa { animation: piscarEmergenciaFundo 0.8s infinite; }
 
 .topo-bar {
     background-color: #22222b;
@@ -71,7 +61,7 @@ h1 { font-size: 18px; color: #00adb5; text-transform: uppercase; letter-spacing:
 }
 .btn-conectar:hover { opacity: 0.9; }
 
-.btn-som, .btn-exportar {
+.btn-som, .btn-exportar, .btn-admin-login {
     padding: 8px 14px;
     background-color: #2d2d3a;
     border-radius: 6px;
@@ -86,6 +76,10 @@ h1 { font-size: 18px; color: #00adb5; text-transform: uppercase; letter-spacing:
 
 .btn-exportar { color: #5cb85c; border: 1px solid #5cb85c; }
 .btn-exportar:hover { background-color: #5cb85c; color: #1a1a1e; }
+
+.btn-admin-login { color: #f0ad4e; border: 1px solid #f0ad4e; }
+.btn-admin-login:hover { background-color: #f0ad4e; color: #1a1a1e; }
+.btn-admin-login.logado { color: #00adb5; border-color: #00adb5; background-color: #1a2a30; }
 
 .container-principal { display: flex; gap: 14px; flex: 1; min-height: 0; width: 100%; }
 
@@ -295,3 +289,107 @@ h1 { font-size: 18px; color: #00adb5; text-transform: uppercase; letter-spacing:
     white-space: pre-wrap;
     line-height: 1.4;
 }
+
+/* MODAIS */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    background-color: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+}
+
+.modal-overlay.ativo { opacity: 1; pointer-events: auto; }
+
+.modal-card {
+    background-color: #22222b;
+    border: 1px solid #333344;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+    width: 380px;
+    max-width: 90vw;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.modal-card.admin-panel { width: 780px; max-height: 90vh; overflow-y: auto; }
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #333344;
+    padding-bottom: 10px;
+}
+
+.modal-titulo { font-size: 15px; color: #00adb5; font-weight: bold; }
+.btn-fechar-modal { background: none; border: none; color: #888899; font-size: 18px; cursor: pointer; }
+.btn-fechar-modal:hover { color: #ff4d4d; }
+
+.form-grupo { display: flex; flex-direction: column; gap: 4px; }
+.form-label { font-size: 11px; color: #aaa; font-weight: 500; }
+.form-input {
+    background-color: #141419;
+    border: 1px solid #333344;
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    outline: none;
+}
+.form-input:focus { border-color: #00adb5; }
+
+.btn-acao-modal {
+    background-color: #00adb5;
+    color: #1a1a1e;
+    border: none;
+    padding: 10px;
+    border-radius: 6px;
+    font-weight: bold;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.msg-erro-login { font-size: 12px; color: #ff4d4d; text-align: center; display: none; }
+
+.grid-admin-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+.box-admin-secao {
+    background-color: #141419;
+    border: 1px solid #333344;
+    border-radius: 8px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.btn-comando-admin {
+    padding: 8px 12px;
+    background-color: #2a2a38;
+    border: 1px solid #333344;
+    color: #fff;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: all 0.2s;
+}
+.btn-comando-admin:hover { background-color: #38384d; border-color: #00adb5; }
+.btn-comando-admin.alerta { border-color: #ff4d4d; color: #ff8080; }
+.btn-comando-admin.alerta:hover { background-color: #401010; }
+
+.badge-status { padding: 3px 8px; border-radius: 4px; font-size: 10px; text-transform: uppercase; font-weight: bold; }
+.badge-auto { background-color: #00adb5; color: #111; }
+.badge-manual { background-color: #f0ad4e; color: #111; }

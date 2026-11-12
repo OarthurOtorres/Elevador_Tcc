@@ -2,11 +2,10 @@ let portaSerial = null, escritor = null, leitor = null;
 let somHabilitado = true;
 let audioCtx = null;
 
-// Objetos Web Audio para a Sirene Modulada
-let oscSirene = null;
-let lfoSirene = null;
-let lfoGain = null;
-let gainSirene = null;
+let usuarioAutenticado = null;
+let modoManualAtivo = false;
+
+let oscSirene = null, lfoSirene = null, lfoGain = null, gainSirene = null;
 
 let contadorViagens = 0, contadorAlertas = 0;
 let ultimoAndarRegistrado = null, tempoInicioConexao = null, timerUptime = null;
@@ -27,25 +26,26 @@ const ledP = document.getElementById('ledP');
 const lblPorta = document.getElementById('lblPorta');
 const ledIR = document.getElementById('ledIR');
 const lblIR = document.getElementById('lblIR');
+const btnAdminAccess = document.getElementById('btnAdminAccess');
 
-function initAudio() {
-    if (!audioCtx) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    }
-    if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
-    }
+// GERENCIAMENTO DE CREDENCIAIS SALVAS NO LOCALSTORAGE (PERMANECEM SALVAS)
+function getCredenciaisSalvas() {
+    const user = localStorage.getItem('tcc_admin_user') || 'admin';
+    const pass = localStorage.getItem('tcc_admin_pass') || 'admin123';
+    return { user, pass };
 }
 
-// SOM DING-DONG REALISTA (Mi5 -> Do5)
+function initAudio() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+
 function tocarDingDong() {
     if (!somHabilitado) return;
     initAudio();
     if (!audioCtx) return;
 
     const now = audioCtx.currentTime;
-
-    // DING
     const osc1 = audioCtx.createOscillator();
     const gain1 = audioCtx.createGain();
     osc1.type = 'sine';
@@ -57,7 +57,6 @@ function tocarDingDong() {
     osc1.start(now);
     osc1.stop(now + 0.8);
 
-    // DONG
     const osc2 = audioCtx.createOscillator();
     const gain2 = audioCtx.createGain();
     osc2.type = 'sine';
@@ -70,33 +69,28 @@ function tocarDingDong() {
     osc2.stop(now + 1.2);
 }
 
-// SIRENE REALISTA (WAIL INDUSTRIAL COM MODULAÇÃO LFO)
 function iniciarSirene() {
     if (oscSirene || !somHabilitado) return;
     initAudio();
     if (!audioCtx) return;
 
     const now = audioCtx.currentTime;
-
     oscSirene = audioCtx.createOscillator();
     lfoSirene = audioCtx.createOscillator();
     lfoGain = audioCtx.createGain();
     gainSirene = audioCtx.createGain();
 
-    // Frequência base e formato de onda da sirene
     oscSirene.type = 'sawtooth';
     oscSirene.frequency.setValueAtTime(850, now);
 
-    // Oscilador de baixa frequência (LFO) para varrimento contínuo (Wail)
     lfoSirene.type = 'sine';
-    lfoSirene.frequency.setValueAtTime(1.2, now); // Velocidade do ciclo da sirene (1.2 Hz)
-    lfoGain.gain.setValueAtTime(350, now);        // Variação de pitch (+/- 350 Hz => 500 Hz a 1200 Hz)
+    lfoSirene.frequency.setValueAtTime(1.2, now);
+    lfoGain.gain.setValueAtTime(350, now);
 
     lfoSirene.connect(lfoGain);
     lfoGain.connect(oscSirene.frequency);
 
     gainSirene.gain.setValueAtTime(0.18, now);
-
     oscSirene.connect(gainSirene);
     gainSirene.connect(audioCtx.destination);
 
@@ -152,13 +146,128 @@ function tocarSomReset() {
     osc.stop(now + 0.3);
 }
 
-// TECLAS DE FUNÇÃO (F1 a F5)
+/* LÓGICA DE MODAIS E ADMINISTRAÇÃO */
+function abrirModalAuth() {
+    tocarSomClique();
+    if (usuarioAutenticado) {
+        abrirModalAdmin();
+    } else {
+        const creds = getCredenciaisSalvas();
+        document.getElementById('inputUsuario').value = creds.user;
+        document.getElementById('inputSenha').value = "";
+        document.getElementById('modalLogin').classList.add('ativo');
+    }
+}
+
+function fecharModalLogin() {
+    document.getElementById('modalLogin').classList.remove('ativo');
+    document.getElementById('msgErroLogin').style.display = 'none';
+}
+
+function fazerLogin() {
+    const u = document.getElementById('inputUsuario').value.trim();
+    const p = document.getElementById('inputSenha').value.trim();
+    const creds = getCredenciaisSalvas();
+
+    if (u === creds.user && p === creds.pass) {
+        usuarioAutenticado = u;
+        fecharModalLogin();
+        btnAdminAccess.innerText = "⚙️ Painel Admin (" + u + ") [F6]";
+        btnAdminAccess.classList.add('logado');
+        adicionarAoLog(`[SEGURANÇA]: Login do Admin '${u}'.`);
+        abrirModalAdmin();
+    } else {
+        document.getElementById('msgErroLogin').style.display = 'block';
+    }
+}
+
+function fazerLogout() {
+    adicionarAoLogAdmin(`[SESSÃO]: Encerramento de sessão.`);
+    usuarioAutenticado = null;
+    btnAdminAccess.innerText = "🔒 Modo Técnico [F6]";
+    btnAdminAccess.classList.remove('logado');
+    fecharModalAdmin();
+}
+
+function abrirModalAdmin() {
+    document.getElementById('modalAdmin').classList.add('ativo');
+}
+
+function fecharModalAdmin() {
+    document.getElementById('modalAdmin').classList.remove('ativo');
+}
+
+function alternarModoOperacao() {
+    modoManualAtivo = !modoManualAtivo;
+    const badge = document.getElementById('badgeModoOp');
+    if (modoManualAtivo) {
+        badge.innerText = "MODO: MANUAL / OVERRIDE";
+        badge.className = "badge-status badge-manual";
+        enviarComando('M');
+        adicionarAoLogAdmin("Sistema alterado para MODO MANUAL de operação.");
+    } else {
+        badge.innerText = "MODO: AUTOMÁTICO";
+        badge.className = "badge-status badge-auto";
+        enviarComando('A');
+        adicionarAoLogAdmin("Sistema retornado ao MODO AUTOMÁTICO.");
+    }
+}
+
+function executarAcaoAdmin(descricao, comando) {
+    enviarComando(comando);
+    adicionarAoLogAdmin(`Ação executada: ${descricao} [Comando: ${comando}]`);
+}
+
+function salvarParametroPorta() {
+    const segs = document.getElementById('cfgTempoPorta').value;
+    enviarComando('T' + segs);
+    adicionarAoLogAdmin(`Enviado novo tempo de porta: ${segs}s para gravação na EEPROM.`);
+}
+
+function salvarNovasCredenciais() {
+    const novoU = document.getElementById('cfgNovoUsuario').value.trim();
+    const novaP = document.getElementById('cfgNovaSenha').value.trim();
+
+    if (!novoU || !novaP) {
+        alert("Por favor, preencha o novo usuário e a nova senha.");
+        return;
+    }
+
+    localStorage.setItem('tcc_admin_user', novoU);
+    localStorage.setItem('tcc_admin_pass', novaP);
+
+    usuarioAutenticado = novoU;
+    btnAdminAccess.innerText = "⚙️ Painel Admin (" + novoU + ") [F6]";
+
+    document.getElementById('cfgNovoUsuario').value = "";
+    document.getElementById('cfgNovaSenha').value = "";
+
+    adicionarAoLogAdmin(`[SEGURANÇA]: Credenciais alteradas para usuário '${novoU}'.`);
+    alert("Credenciais salvas com sucesso! Elas permanecerão guardadas no seu navegador.");
+}
+
+function adicionarAoLogAdmin(msg) {
+    const logAudit = document.getElementById('logAdminAudit');
+    const h = new Date().toLocaleTimeString();
+    logAudit.innerText += `\n[${h}] ${msg}`;
+    logAudit.scrollTop = logAudit.scrollHeight;
+}
+
+/* TECLAS DE ATALHO DE F1 A F9, U, D, S, M */
 window.addEventListener('keydown', (e) => {
     if (e.key === 'F1') { e.preventDefault(); enviarComando('1'); }
     else if (e.key === 'F2') { e.preventDefault(); enviarComando('2'); }
     else if (e.key === 'F3') { e.preventDefault(); enviarComando('3'); }
     else if (e.key === 'F4') { e.preventDefault(); enviarComando('R'); }
     else if (e.key === 'F5') { e.preventDefault(); enviarComando('E'); }
+    else if (e.key === 'F6') { e.preventDefault(); abrirModalAuth(); }
+    else if (e.key === 'F7') { e.preventDefault(); if (modoManualAtivo) executarAcaoAdmin('TOGGLE_PORTA_1', '4'); }
+    else if (e.key === 'F8') { e.preventDefault(); if (modoManualAtivo) executarAcaoAdmin('TOGGLE_PORTA_2', '5'); }
+    else if (e.key === 'F9') { e.preventDefault(); if (modoManualAtivo) executarAcaoAdmin('TOGGLE_PORTA_3', '6'); }
+    else if (e.key === 'u' || e.key === 'U') { if (modoManualAtivo) executarAcaoAdmin('SUBIR_FORCADO', 'U'); }
+    else if (e.key === 'd' || e.key === 'D') { if (modoManualAtivo) executarAcaoAdmin('DESCER_FORCADO', 'D'); }
+    else if (e.key === 's' || e.key === 'S') { if (modoManualAtivo) executarAcaoAdmin('PARAR_MOTOR', 'S'); }
+    else if (e.key === 'm' || e.key === 'M') { if (usuarioAutenticado) alternarModoOperacao(); }
 });
 
 function atualizarRelogio() {
@@ -216,7 +325,6 @@ btnConectar.addEventListener('click', async () => {
         tocarSomClique();
         
         setTimeout(() => enviarComando('Q'), 300);
-
         lerDadosDaSerial();
     } catch (erro) {
         statusTxt.innerText = "Status: Erro Conexão";
@@ -262,14 +370,12 @@ async function lerDadosDaSerial() {
 }
 
 function processarTagEspecial(tag) {
-    // CONTAGEM DE VIAGENS ACUMULADAS
     if (tag.startsWith('*V')) {
         contadorViagens = parseInt(tag.substring(2)) || 0;
         cntViagens.innerText = contadorViagens;
         return;
     }
 
-    // MOTOR
     if (tag === '*MU') {
         icoSentido.innerText = "⬆️";
         txtSentido.innerText = "SUBINDO";
@@ -284,7 +390,6 @@ function processarTagEspecial(tag) {
         txtSentido.style.color = "#00adb5";
     }
 
-    // SENSOR IR DE PRESENÇA
     else if (tag === '*IR1') {
         ledIR.classList.add('ir-detectado');
         lblIR.innerText = "IR Presença: Detectado";
@@ -293,7 +398,6 @@ function processarTagEspecial(tag) {
         lblIR.innerText = "IR Presença: Livre";
     }
 
-    // ESTADO DA PORTA (ACIONA O DING-DONG AO ABRIR)
     else if (tag === '*P1') {
         ledP.classList.add('porta-aberta');
         lblPorta.innerText = "Porta Aberta";
@@ -303,7 +407,6 @@ function processarTagEspecial(tag) {
         lblPorta.innerText = "Porta Fechada";
     }
 
-    // SENSORES DE ANDAR
     else if (tag.startsWith('*S')) {
         const num = tag.charAt(2);
         const st = tag.charAt(3);
@@ -329,7 +432,6 @@ function processarTagEspecial(tag) {
         }
     }
 
-    // CHAMADAS E EMERGÊNCIA
     else {
         const idLed = "led" + tag.charAt(1);
         const status = tag.charAt(2);

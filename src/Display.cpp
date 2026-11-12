@@ -128,3 +128,10 @@ void desligarLedReset() {
   lcd.backlight();
   lcd.clear();
 }
+
+void lcdManutencao() {
+  lcd.setCursor(0, 0);
+  lcd.print("MODO MANUTENCAO ");
+  lcd.setCursor(0, 1);
+  lcd.print(" CONTROLE ADMIN ");
+}

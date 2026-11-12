@@ -15,6 +15,7 @@
             <div class="relogio-header" id="relogioTxt">--/--/---- --:--:--</div>
         </div>
         <div class="topo-acoes">
+            <button class="btn-admin-login" id="btnAdminAccess" onclick="abrirModalAuth()">🔒 Modo Técnico [F6]</button>
             <button class="btn-som" id="btnSom" onclick="alternarSom()">🔊 Som: LIGADO</button>
             <button class="btn-exportar" onclick="exportarLog()">📥 Exportar Log</button>
             <button class="btn-conectar" id="btnConectar">CONECTAR VIA BLUETOOTH</button>
@@ -149,6 +150,125 @@
 
             <div class="titulo-secao">Log de Eventos do Sistema em Tempo Real</div>
             <div class="caixa-texto" id="logTerminal">Aguardando conexão com o elevador...</div>
+        </div>
+    </div>
+
+    <!-- MODAL LOGIN -->
+    <div class="modal-overlay" id="modalLogin">
+        <div class="modal-card">
+            <div class="modal-header">
+                <span class="modal-titulo">🔑 Autenticação de Administrador</span>
+                <button class="btn-fechar-modal" onclick="fecharModalLogin()">✕</button>
+            </div>
+            <div class="form-grupo">
+                <label class="form-label">Usuário</label>
+                <input type="text" class="form-input" id="inputUsuario" placeholder="Digite o usuário">
+            </div>
+            <div class="form-grupo">
+                <label class="form-label">Senha</label>
+                <input type="password" class="form-input" id="inputSenha" placeholder="Digite a senha">
+            </div>
+            <div class="msg-erro-login" id="msgErroLogin">Usuário ou senha incorretos!</div>
+            <button class="btn-acao-modal" onclick="fazerLogin()">Entrar no Modo Técnico</button>
+        </div>
+    </div>
+
+    <!-- MODAL PAINEL ADMIN -->
+    <div class="modal-overlay" id="modalAdmin">
+        <div class="modal-card admin-panel">
+            <div class="modal-header">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span class="modal-titulo">⚙️ Painel de Manutenção & Parametrização</span>
+                    <span class="badge-status badge-auto" id="badgeModoOp">MODO: AUTOMÁTICO</span>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button class="btn-admin-login" style="padding: 4px 8px; font-size: 11px;" onclick="fazerLogout()">Sair / Logout</button>
+                    <button class="btn-fechar-modal" onclick="fecharModalAdmin()">✕</button>
+                </div>
+            </div>
+
+            <div class="grid-admin-layout">
+                <!-- COLUNA 1: ACIONAMENTOS MANUAIS -->
+                <div class="box-admin-secao">
+                    <div class="titulo-secao">Controlo Manual do Hardware</div>
+                    
+                    <button class="btn-comando-admin" onclick="alternarModoOperacao()">
+                        <span>Modo Automático / Manual</span>
+                        <span>🔄 [M]</span>
+                    </button>
+
+                    <div class="titulo-secao" style="margin-top: 4px;">Acionamentos de Motor</div>
+                    
+                    <button class="btn-comando-admin" onclick="executarAcaoAdmin('SUBIR_FORCADO', 'U')">
+                        <span>Forçar Subida de Motor</span>
+                        <span>⬆️ [U]</span>
+                    </button>
+                    
+                    <button class="btn-comando-admin" onclick="executarAcaoAdmin('DESCER_FORCADO', 'D')">
+                        <span>Forçar Descida de Motor</span>
+                        <span>⬇️ [D]</span>
+                    </button>
+
+                    <button class="btn-comando-admin" onclick="executarAcaoAdmin('PARAR_MOTOR', 'S')">
+                        <span>Forçar Parada do Motor</span>
+                        <span>⏹️ [S]</span>
+                    </button>
+
+                    <div class="titulo-secao" style="margin-top: 4px;">Acionamento Individual das Portas</div>
+
+                    <button class="btn-comando-admin" onclick="executarAcaoAdmin('TOGGLE_PORTA_1', '4')">
+                        <span>Porta 1º Andar</span>
+                        <span>🚪 [F7]</span>
+                    </button>
+                    <button class="btn-comando-admin" onclick="executarAcaoAdmin('TOGGLE_PORTA_2', '5')">
+                        <span>Porta 2º Andar</span>
+                        <span>🚪 [F8]</span>
+                    </button>
+                    <button class="btn-comando-admin" onclick="executarAcaoAdmin('TOGGLE_PORTA_3', '6')">
+                        <span>Porta 3º Andar</span>
+                        <span>🚪 [F9]</span>
+                    </button>
+                </div>
+
+                <!-- COLUNA 2: PARAMETRIZAÇÃO E MANUTENÇÃO -->
+                <div class="box-admin-secao">
+                    <div class="titulo-secao">Parametrização do Hardware</div>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <label class="form-label">Tempo da Porta Aberta (segundos):</label>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="number" id="cfgTempoPorta" class="form-input" style="flex: 1;" value="6" min="2" max="20">
+                            <button class="btn-conectar" style="padding: 6px 12px; font-size: 11px;" onclick="salvarParametroPorta()">Salvar [EEPROM]</button>
+                        </div>
+                    </div>
+
+                    <div class="titulo-secao" style="margin-top: 8px;">Alterar Credenciais de Acesso</div>
+                    
+                    <div class="form-grupo">
+                        <label class="form-label">Novo Usuário:</label>
+                        <input type="text" class="form-input" id="cfgNovoUsuario" placeholder="Novo Usuário">
+                    </div>
+                    <div class="form-grupo">
+                        <label class="form-label">Nova Senha:</label>
+                        <input type="password" class="form-input" id="cfgNovaSenha" placeholder="Nova Senha">
+                    </div>
+                    <button class="btn-conectar" style="padding: 6px; font-size: 12px; width: 100%; text-align: center;" onclick="salvarNovasCredenciais()">Salvar Credenciais no Navegador</button>
+
+                    <div class="titulo-secao" style="margin-top: 8px;">Manutenção Preventiva</div>
+
+                    <button class="btn-comando-admin alerta" onclick="executarAcaoAdmin('ZERAR_VIAGENS', 'Z')">
+                        <span>Zerar Contador de Viagens</span>
+                        <span>🧹 [Z]</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="box-admin-secao">
+                <div class="titulo-secao">Log de Auditoria de Ações do Administrador</div>
+                <div class="caixa-texto" id="logAdminAudit" style="height: 100px; font-size: 11px; color: #00adb5;">
+                    [AUDITORIA]: Sessão iniciada pelo usuário administrador.
+                </div>
+            </div>
         </div>
     </div>
 

@@ -9,10 +9,9 @@
 
 volatile bool emergenciaAtivada = false;
 
-// Variáveis para filtro de ruído (Debounce) dentro das interrupções
 volatile unsigned long ultimoTempoEmergencia = 0;
 volatile unsigned long ultimoTempoReset = 0;
-const unsigned long TEMPO_DEBOUNCE = 150; // Tempo mínimo em ms entre disparos
+const unsigned long TEMPO_DEBOUNCE = 150;
 
 void EmergenciaInit() {
   pinMode(BtEmergencia, INPUT_PULLUP);
@@ -24,9 +23,6 @@ void EmergenciaInit() {
 
 void ParadaEmergencia() { 
   unsigned long tempoAtual = millis();
-  
-  // FILTRO ANTI-RUÍDO DO MOTOR:
-  // Só aceita o disparo se o botão estiver REALMENTE pressionado (LOW)
   if (tempoAtual - ultimoTempoEmergencia > TEMPO_DEBOUNCE) {
     if (digitalRead(BtEmergencia) == LOW) { 
       emergenciaAtivada = true; 
@@ -35,25 +31,30 @@ void ParadaEmergencia() {
   }
 }
 
+// CORREÇÃO DO BUG: Valida o estado real do botão de emergência físico
+bool tentarResetarSistema() {
+  if (digitalRead(BtEmergencia) == LOW) { 
+    return false; // Bloqueia o reset se o botão físico estiver retido
+  }
+  
+  emergenciaAtivada = false;
+  Serial.println("E:0"); // Avisa o supervisório que o sistema normalizou
+  return true;
+}
+
 void ResetEmergencia() {
   unsigned long tempoAtual = millis();
-  
   if (tempoAtual - ultimoTempoReset > TEMPO_DEBOUNCE) {
-    // CORREÇÃO CRÍTICA: Só reseta se o botão físico de Reset estiver REALMENTE pressionado (LOW)
-    // E o botão físico de emergência estiver solto (HIGH)
-    if (digitalRead(BtReset) == LOW && digitalRead(BtEmergencia) == HIGH) { 
-      emergenciaAtivada = false;
+    if (digitalRead(BtReset) == LOW) { 
+      tentarResetarSistema();
       ultimoTempoReset = tempoAtual;
-      Serial.println("E:0"); // Avisa o supervisório que voltou ao Normal
     }
   }
 }
 
 void rotinaSeguranca() {
-  pararMotor();              // Para o motor imediatamente
-  setSireneEmergencia(true);  // Dispara a sirene do buzzer
-  lcdEmergencia();           // Atualiza o display para mostrar emergência
-  
-  // AVISA O SUPERVISÓRIO WEB QUE ENTROU EM EMERGÊNCIA
+  pararMotor();              
+  setSireneEmergencia(true);  
+  lcdEmergencia();           
   Serial.println("E:1"); 
 }
