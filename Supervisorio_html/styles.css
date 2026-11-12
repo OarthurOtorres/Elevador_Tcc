@@ -23,51 +23,78 @@ body.emergencia-ativa { animation: piscarEmergenciaFundo 0.8s infinite; }
 
 .topo-bar {
     background-color: #22222b;
-    padding: 10px 20px;
+    padding: 8px 16px;
     border-radius: 10px;
     border: 1px solid #333344;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 12px;
     flex-shrink: 0;
 }
 
-.topo-info { display: flex; align-items: center; gap: 20px; }
+.topo-info {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+}
 
 .relogio-header {
     font-family: monospace;
-    font-size: 13px;
+    font-size: 12px;
     color: #00adb5;
     background-color: #141419;
-    padding: 4px 10px;
+    padding: 4px 9px;
     border-radius: 6px;
     border: 1px solid #333344;
+    white-space: nowrap;
 }
 
-.topo-acoes { display: flex; align-items: center; gap: 10px; }
-h1 { font-size: 18px; color: #00adb5; text-transform: uppercase; letter-spacing: 1px; }
-.status-conexao { font-size: 13px; color: #ff4d4d; font-weight: bold; }
+.topo-acoes {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex-shrink: 0;
+}
+
+h1 {
+    font-size: 16px;
+    color: #00adb5;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    white-space: nowrap;
+}
+
+.status-conexao {
+    font-size: 12px;
+    color: #ff4d4d;
+    font-weight: bold;
+    white-space: nowrap;
+}
 
 .btn-conectar {
-    padding: 8px 16px;
+    padding: 7px 14px;
     background-color: #00adb5;
     color: #1a1a1e;
     border: none;
     border-radius: 6px;
     font-weight: bold;
     cursor: pointer;
-    font-size: 13px;
+    font-size: 12px;
+    white-space: nowrap;
     transition: opacity 0.2s;
 }
 .btn-conectar:hover { opacity: 0.9; }
 
 .btn-som, .btn-exportar, .btn-admin-login {
-    padding: 8px 14px;
+    padding: 7px 11px;
     background-color: #2d2d3a;
     border-radius: 6px;
     font-weight: bold;
     cursor: pointer;
-    font-size: 13px;
+    font-size: 12px;
+    white-space: nowrap;
     transition: all 0.2s;
 }
 
@@ -76,6 +103,9 @@ h1 { font-size: 18px; color: #00adb5; text-transform: uppercase; letter-spacing:
 
 .btn-exportar { color: #5cb85c; border: 1px solid #5cb85c; }
 .btn-exportar:hover { background-color: #5cb85c; color: #1a1a1e; }
+
+.btn-exportar.btn-csv { color: #00adb5; border-color: #00adb5; }
+.btn-exportar.btn-csv:hover { background-color: #00adb5; color: #1a1a1e; }
 
 .btn-admin-login { color: #f0ad4e; border: 1px solid #f0ad4e; }
 .btn-admin-login:hover { background-color: #f0ad4e; color: #1a1a1e; }
@@ -239,7 +269,7 @@ h1 { font-size: 18px; color: #00adb5; text-transform: uppercase; letter-spacing:
     min-height: 0;
 }
 
-.grid-telemetria { display: grid; grid-template-columns: 1.1fr 1.2fr 1fr; gap: 10px; }
+.grid-telemetria { display: grid; grid-template-columns: 1fr 1.2fr 1.1fr; gap: 10px; }
 
 .card-telemetria {
     background-color: #141419;
@@ -389,6 +419,7 @@ h1 { font-size: 18px; color: #00adb5; text-transform: uppercase; letter-spacing:
 .btn-comando-admin:hover { background-color: #38384d; border-color: #00adb5; }
 .btn-comando-admin:active { background-color: #00adb5; color: #111; }
 .btn-comando-admin.desabilitado-auto { opacity: 0.45; }
+.btn-comando-admin.ativo-demo { background-color: #143628; border-color: #5cb85c; color: #88ff88; }
 .btn-comando-admin.alerta { border-color: #ff4d4d; color: #ff8080; }
 .btn-comando-admin.alerta:hover { background-color: #401010; }
 

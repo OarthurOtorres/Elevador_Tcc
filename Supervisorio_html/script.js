@@ -6,6 +6,15 @@ let usuarioAutenticado = null;
 let modoManualAtivo = false;
 let emergenciaAtualWeb = false;
 
+// Variáveis de Telemetria Preditiva, Auto-Demo e CSV
+let inicioMovimentoMs = null;
+let andarPartidaMovimento = null;
+let modoDemoAtivo = false;
+let timerProximoPassoDemo = null;
+let indiceSequenciaDemo = 0;
+const sequenciaDemo = ['3', '1', '2', '3', '1'];
+let registrosCSV = [];
+
 let oscSirene = null, lfoSirene = null, lfoGain = null, gainSirene = null;
 
 let contadorViagens = 0, contadorAlertas = 0;
@@ -23,6 +32,7 @@ const cntAlertas = document.getElementById('cntAlertas');
 const icoSentido = document.getElementById('icoSentido');
 const txtSentido = document.getElementById('txtSentido');
 const valUptime = document.getElementById('valUptime');
+const valTempoViagem = document.getElementById('valTempoViagem');
 const ledP = document.getElementById('ledP');
 const lblPorta = document.getElementById('lblPorta');
 const ledIR = document.getElementById('ledIR');
@@ -40,6 +50,34 @@ function initAudio() {
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         if (audioCtx.state === 'suspended') audioCtx.resume();
     } catch (e) {}
+}
+
+function falarCabine(texto) {
+    if (!somHabilitado || !('speechSynthesis' in window)) return;
+    try {
+        window.speechSynthesis.cancel();
+        const fala = new SpeechSynthesisUtterance(texto);
+        fala.lang = 'pt-BR';
+        fala.rate = 1.05;
+        fala.pitch = 1.0;
+        fala.volume = 1.0;
+
+        const vozes = window.speechSynthesis.getVoices();
+        const vozPT = vozes.find(v => v.lang && v.lang.toLowerCase().includes('pt-br'));
+        if (vozPT) fala.voice = vozPT;
+
+        window.speechSynthesis.speak(fala);
+    } catch (e) {}
+}
+
+function anunciarAndar(numAndar) {
+    const nomesAndares = {
+        '1': 'Primeiro andar',
+        '2': 'Segundo andar',
+        '3': 'Terceiro andar'
+    };
+    const frase = nomesAndares[String(numAndar)];
+    if (frase) falarCabine(frase);
 }
 
 function tocarDingDong() {
@@ -156,6 +194,69 @@ function tocarSomReset() {
     } catch (e) {}
 }
 
+/* MODO DEMONSTRAÇÃO AUTOMÁTICO (SINCRONIZADO COM CICLO DE PORTAS E FUSO) */
+function dispararProximoAndarDemo() {
+    if (!modoDemoAtivo || modoManualAtivo || emergenciaAtualWeb) return;
+
+    if (!escritor) {
+        adicionarAoLog("⚠️ [DEMO]: Conecte o Bluetooth primeiro para iniciar o ciclo.");
+        alternarModoDemo(true);
+        return;
+    }
+
+    let andarAlvo = sequenciaDemo[indiceSequenciaDemo];
+    indiceSequenciaDemo = (indiceSequenciaDemo + 1) % sequenciaDemo.length;
+
+    if (ultimoAndarRegistrado && andarAlvo === String(ultimoAndarRegistrado)) {
+        andarAlvo = sequenciaDemo[indiceSequenciaDemo];
+        indiceSequenciaDemo = (indiceSequenciaDemo + 1) % sequenciaDemo.length;
+    }
+
+    enviarComando(andarAlvo);
+    adicionarAoLog(`[DEMO]: Chamada automática enviada para o ${andarAlvo}º Andar.`);
+}
+
+function agendarProximoPassoDemo(delayMs = 3500) {
+    if (!modoDemoAtivo) return;
+    if (timerProximoPassoDemo) clearTimeout(timerProximoPassoDemo);
+    timerProximoPassoDemo = setTimeout(() => {
+        dispararProximoAndarDemo();
+    }, delayMs);
+}
+
+function alternarModoDemo(forcarDesligar = false) {
+    if (forcarDesligar && !modoDemoAtivo) return;
+    modoDemoAtivo = forcarDesligar ? false : !modoDemoAtivo;
+
+    const btnDemo = document.getElementById('btnModoDemo');
+
+    if (modoDemoAtivo) {
+        if (modoManualAtivo) {
+            modoDemoAtivo = false;
+            adicionarAoLogAdmin("⚠️ Saia do Modo Manual antes de ativar o Modo Demonstração.");
+            return;
+        }
+        if (btnDemo) {
+            btnDemo.classList.add('ativo-demo');
+            btnDemo.querySelector('span').innerText = "Modo Demonstração: ATIVO";
+        }
+        adicionarAoLogAdmin("🤖 Modo Demonstração ATIVADO (ciclo sincronizado por viagem).");
+        adicionarAoLog("[DEMO]: Modo de demonstração automática iniciado.");
+        fecharModalAdmin();
+        dispararProximoAndarDemo();
+    } else {
+        if (timerProximoPassoDemo) {
+            clearTimeout(timerProximoPassoDemo);
+            timerProximoPassoDemo = null;
+        }
+        if (btnDemo) {
+            btnDemo.classList.remove('ativo-demo');
+            btnDemo.querySelector('span').innerText = "Modo Demonstração (Auto-Loop)";
+        }
+        adicionarAoLogAdmin("🤖 Modo Demonstração DESATIVADO.");
+    }
+}
+
 /* MODAIS E ADMINISTRAÇÃO */
 function abrirModalAuth() {
     tocarSomClique();
@@ -183,7 +284,7 @@ function fazerLogin() {
     if (u === creds.user && p === creds.pass) {
         usuarioAutenticado = u;
         fecharModalLogin();
-        btnAdminAccess.innerText = "⚙️ Painel Admin (" + u + ") [F6]";
+        btnAdminAccess.innerText = "⚙️ Admin (" + u + ") [F6]";
         btnAdminAccess.classList.add('logado');
         adicionarAoLog(`[SEGURANÇA]: Login do Admin '${u}'.`);
         abrirModalAdmin();
@@ -217,6 +318,7 @@ function alternarModoOperacao() {
     const botoesManuais = document.querySelectorAll('.btn-manual-only');
 
     if (modoManualAtivo) {
+        alternarModoDemo(true);
         badge.innerText = "MODO: MANUAL / OVERRIDE";
         badge.className = "badge-status badge-manual";
         botoesManuais.forEach(btn => btn.classList.remove('desabilitado-auto'));
@@ -248,15 +350,18 @@ function zerarTodasMetricas() {
     paradasA1 = 0;
     paradasA2 = 0;
     paradasA3 = 0;
+    registrosCSV = [];
 
     cntViagens.innerText = '0';
     cntAlertas.innerText = '0';
+    valTempoViagem.innerText = '-- s';
+    valTempoViagem.style.color = '#5cb85c';
     document.getElementById('statA1').innerText = '0x';
     document.getElementById('statA2').innerText = '0x';
     document.getElementById('statA3').innerText = '0x';
 
     atualizarGraficoDemanda();
-    adicionarAoLogAdmin("Métricas zeradas: Viagens, Alertas e Uso Relativo por Andar [Comando: Z]");
+    adicionarAoLogAdmin("Métricas zeradas: Viagens, Alertas, Preditiva e CSV [Comando: Z]");
 }
 
 function salvarParametroPorta() {
@@ -278,7 +383,7 @@ function salvarNovasCredenciais() {
     localStorage.setItem('tcc_admin_pass', novaP);
 
     usuarioAutenticado = novoU;
-    btnAdminAccess.innerText = "⚙️ Painel Admin (" + novoU + ") [F6]";
+    btnAdminAccess.innerText = "⚙️ Admin (" + novoU + ") [F6]";
 
     document.getElementById('cfgNovoUsuario').value = "";
     document.getElementById('cfgNovaSenha').value = "";
@@ -325,6 +430,9 @@ window.addEventListener('keydown', (e) => {
         } else if (tecla === 's') {
             e.preventDefault();
             executarAcaoManual('PARAR_MOTOR', 'S');
+        } else if (tecla === 't' && usuarioAutenticado) {
+            e.preventDefault();
+            alternarModoDemo();
         } else if (tecla === 'z' && usuarioAutenticado) {
             e.preventDefault();
             zerarTodasMetricas();
@@ -365,9 +473,32 @@ function exportarLog() {
     document.body.removeChild(a);
 }
 
+function exportarCSV() {
+    if (registrosCSV.length === 0) {
+        alert("Ainda não há eventos registrados para exportar.");
+        return;
+    }
+    const cabecalho = "Data;Hora;Evento;Andar_Atual;Total_Viagens;Duracao_Percurso_s\n";
+    const linhas = registrosCSV.map(r =>
+        `${r.data};${r.hora};"${r.evento.replace(/"/g, '""')}";${r.andar};${r.viagens};${r.tempoPercurso}`
+    ).join("\n");
+
+    const blob = new Blob(["\uFEFF" + cabecalho + linhas], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `relatorio_elevador_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
+
 function alternarSom() {
     somHabilitado = !somHabilitado;
-    if (!somHabilitado) pararSirene();
+    if (!somHabilitado) {
+        pararSirene();
+        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    }
     btnSom.innerText = somHabilitado ? "🔊 Som: LIGADO" : "🔇 Som: DESLIGADO";
     btnSom.classList.toggle('mutado', !somHabilitado);
     if (somHabilitado) tocarSomClique();
@@ -375,6 +506,7 @@ function alternarSom() {
 
 btnConectar.addEventListener('click', async () => {
     initAudio();
+    if ('speechSynthesis' in window) window.speechSynthesis.getVoices();
     try {
         statusTxt.innerText = "Conectando...";
         portaSerial = await navigator.serial.requestPort();
@@ -382,7 +514,8 @@ btnConectar.addEventListener('click', async () => {
         escritor = portaSerial.writable.getWriter();
         statusTxt.innerText = "Status: Conectado!";
         statusTxt.style.color = "#00adb5";
-        logTerminal.innerHTML = "[SISTEMA]: Conexão Serial/Bluetooth Estabelecida.\n";
+        logTerminal.innerHTML = "";
+        adicionarAoLog("[SISTEMA]: Conexão Serial/Bluetooth Estabelecida.");
         iniciarUptime();
         tocarSomClique();
         
@@ -446,14 +579,51 @@ function processarTagEspecial(tag) {
         icoSentido.innerText = "⬆️";
         txtSentido.innerText = "SUBINDO";
         txtSentido.style.color = "#00adb5";
+        if (inicioMovimentoMs === null) {
+            inicioMovimentoMs = Date.now();
+            andarPartidaMovimento = ultimoAndarRegistrado;
+        }
     } else if (tag === '*MD') {
         icoSentido.innerText = "⬇️";
         txtSentido.innerText = "DESCENDO";
         txtSentido.style.color = "#f0ad4e";
+        if (inicioMovimentoMs === null) {
+            inicioMovimentoMs = Date.now();
+            andarPartidaMovimento = ultimoAndarRegistrado;
+        }
     } else if (tag === '*MS') {
         icoSentido.innerText = "⏸️";
         txtSentido.innerText = "PARADO";
         txtSentido.style.color = "#00adb5";
+
+        if (inicioMovimentoMs !== null && !emergenciaAtualWeb && !modoManualAtivo) {
+            const duracaoSeg = ((Date.now() - inicioMovimentoMs) / 1000);
+            if (duracaoSeg >= 2.5) {
+                const duracaoFormatada = duracaoSeg.toFixed(2);
+                const andaresPercorridos = (andarPartidaMovimento && ultimoAndarRegistrado)
+                    ? Math.max(1, Math.abs(parseInt(ultimoAndarRegistrado) - parseInt(andarPartidaMovimento)))
+                    : 1;
+                const limitePreditiva = 25.0 * andaresPercorridos;
+
+                valTempoViagem.innerText = `${duracaoFormatada} s`;
+
+                if (duracaoSeg > limitePreditiva) {
+                    valTempoViagem.style.color = "#f0ad4e";
+                    adicionarAoLog(
+                        `⚠️ [PREDITIVA]: Percurso de ${duracaoFormatada}s excedeu o limite (${limitePreditiva.toFixed(1)}s) - verificar tração/atrito.`,
+                        duracaoFormatada.replace('.', ',')
+                    );
+                } else {
+                    valTempoViagem.style.color = "#5cb85c";
+                    adicionarAoLog(
+                        `[TELEMETRIA]: Percurso concluído em ${duracaoFormatada}s (operação nominal).`,
+                        duracaoFormatada.replace('.', ',')
+                    );
+                }
+            }
+        }
+        inicioMovimentoMs = null;
+        andarPartidaMovimento = null;
     }
 
     else if (tag === '*IR1') {
@@ -468,9 +638,16 @@ function processarTagEspecial(tag) {
         ledP.classList.add('porta-aberta');
         lblPorta.innerText = "Porta Aberta";
         tocarDingDong();
+        if (!emergenciaAtualWeb && ultimoAndarRegistrado) {
+            const andarParaAnunciar = ultimoAndarRegistrado;
+            setTimeout(() => anunciarAndar(andarParaAnunciar), 750);
+        }
     } else if (tag === '*P0') {
         ledP.classList.remove('porta-aberta');
         lblPorta.innerText = "Porta Fechada";
+        if (modoDemoAtivo && !modoManualAtivo && !emergenciaAtualWeb) {
+            agendarProximoPassoDemo(3500);
+        }
     }
 
     else if (tag.startsWith('*S')) {
@@ -507,6 +684,8 @@ function processarTagEspecial(tag) {
             if (status === '1') {
                 if (!emergenciaAtualWeb) {
                     emergenciaAtualWeb = true;
+                    inicioMovimentoMs = null;
+                    if (timerProximoPassoDemo) clearTimeout(timerProximoPassoDemo);
                     elemento.classList.add('emergencia-ativa');
                     document.body.classList.add('emergencia-ativa');
                     icoSentido.innerText = "🚨";
@@ -515,6 +694,7 @@ function processarTagEspecial(tag) {
                     contadorAlertas++;
                     cntAlertas.innerText = contadorAlertas;
                     iniciarSirene();
+                    falarCabine("Atenção! Parada de emergência acionada.");
                     adicionarAoLog("[ALERTA]: Emergência do sistema ativada!");
                 }
             } else {
@@ -527,7 +707,11 @@ function processarTagEspecial(tag) {
                     txtSentido.style.color = "#00adb5";
                     pararSirene();
                     tocarSomReset();
+                    falarCabine("Sistema normalizado.");
                     adicionarAoLog("[SISTEMA]: Emergência desativada / Normalizado.");
+                    if (modoDemoAtivo && !modoManualAtivo) {
+                        agendarProximoPassoDemo(3500);
+                    }
                 }
             }
             return;
@@ -560,8 +744,20 @@ function atualizarGraficoDemanda() {
     document.getElementById('pctA3').innerText = Math.round((paradasA3 / total) * 100) + '%';
 }
 
-function adicionarAoLog(mensagem) {
-    const hora = new Date().toLocaleTimeString();
-    logTerminal.innerText += `[${hora}] ${mensagem}\n`;
+function adicionarAoLog(mensagem, tempoPercurso = '') {
+    const agora = new Date();
+    const dataStr = agora.toLocaleDateString();
+    const horaStr = agora.toLocaleTimeString();
+
+    logTerminal.innerText += `[${horaStr}] ${mensagem}\n`;
     logTerminal.scrollTop = logTerminal.scrollHeight;
+
+    registrosCSV.push({
+        data: dataStr,
+        hora: horaStr,
+        evento: mensagem,
+        andar: ultimoAndarRegistrado ? `${ultimoAndarRegistrado}º Andar` : 'N/A',
+        viagens: contadorViagens,
+        tempoPercurso: tempoPercurso
+    });
 }

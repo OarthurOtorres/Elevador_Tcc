@@ -17,7 +17,8 @@
         <div class="topo-acoes">
             <button class="btn-admin-login" id="btnAdminAccess" onclick="abrirModalAuth()">🔒 Modo Técnico [F6]</button>
             <button class="btn-som" id="btnSom" onclick="alternarSom()">🔊 Som: LIGADO</button>
-            <button class="btn-exportar" onclick="exportarLog()">📥 Exportar Log</button>
+            <button class="btn-exportar" onclick="exportarLog()">📥 Exportar TXT</button>
+            <button class="btn-exportar btn-csv" onclick="exportarCSV()">📊 Exportar CSV</button>
             <button class="btn-conectar" id="btnConectar">CONECTAR VIA BLUETOOTH</button>
         </div>
     </div>
@@ -134,15 +135,15 @@
                 </div>
 
                 <div class="card-telemetria">
-                    <div class="titulo-secao">Diagnóstico Conexão</div>
+                    <div class="titulo-secao">Diagnóstico & Preditiva</div>
                     <div class="grid-diag">
                         <div class="item-diag">
-                            <div class="lbl-diag">Baudrate</div>
-                            <div class="val-diag">9600</div>
+                            <div class="lbl-diag">Baudrate / Tempo Conectado</div>
+                            <div class="val-diag"><span style="color:#888899">9600 |</span> <span id="valUptime">00:00:00</span></div>
                         </div>
                         <div class="item-diag">
-                            <div class="lbl-diag">Tempo Conectado</div>
-                            <div class="val-diag" id="valUptime">00:00:00</div>
+                            <div class="lbl-diag">Último Percurso (Preditiva)</div>
+                            <div class="val-diag" id="valTempoViagem">-- s</div>
                         </div>
                     </div>
                 </div>
@@ -254,7 +255,12 @@
                     </div>
                     <button class="btn-conectar" style="padding: 6px; font-size: 12px; width: 100%; text-align: center;" onclick="salvarNovasCredenciais()">Salvar Credenciais no Navegador</button>
 
-                    <div class="titulo-secao" style="margin-top: 8px;">Manutenção Preventiva</div>
+                    <div class="titulo-secao" style="margin-top: 8px;">Demonstração & Manutenção</div>
+
+                    <button class="btn-comando-admin" id="btnModoDemo" onclick="alternarModoDemo()">
+                        <span>Modo Demonstração (Auto-Loop)</span>
+                        <span>🤖 [Alt+T]</span>
+                    </button>
 
                     <button class="btn-comando-admin alerta" onclick="zerarTodasMetricas()">
                         <span>Zerar Métricas e Estatísticas</span>
