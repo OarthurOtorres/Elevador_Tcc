@@ -10,6 +10,7 @@ extern int estado;
 extern int direcaoAtual;
 extern unsigned int totalViagensAcumuladas;
 extern bool modoManual;
+extern bool referenciandoAtivo;
 extern int estadoAnteriorLog;
 
 void initBtsESensores();
@@ -19,6 +20,8 @@ bool sensorAtivo(int andar);
 int escolherProximoAndar();
 void registrarViagemConcluida();
 void executarHoming();
+void iniciarReferenciamento();
+void gerenciarReferenciamento();
 void detectarAndarInicial();
 
 #endif

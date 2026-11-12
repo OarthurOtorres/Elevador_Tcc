@@ -4,6 +4,7 @@ let audioCtx = null;
 
 let usuarioAutenticado = null;
 let modoManualAtivo = false;
+let emergenciaAtualWeb = false;
 
 let oscSirene = null, lfoSirene = null, lfoGain = null, gainSirene = null;
 
@@ -504,24 +505,30 @@ function processarTagEspecial(tag) {
 
         if (idLed === 'ledX') {
             if (status === '1') {
-                elemento.classList.add('emergencia-ativa');
-                document.body.classList.add('emergencia-ativa');
-                icoSentido.innerText = "🚨";
-                txtSentido.innerText = "BLOQUEADO";
-                txtSentido.style.color = "#ff4d4d";
-                contadorAlertas++;
-                cntAlertas.innerText = contadorAlertas;
-                iniciarSirene();
-                adicionarAoLog("[ALERTA]: Emergência do sistema ativada!");
+                if (!emergenciaAtualWeb) {
+                    emergenciaAtualWeb = true;
+                    elemento.classList.add('emergencia-ativa');
+                    document.body.classList.add('emergencia-ativa');
+                    icoSentido.innerText = "🚨";
+                    txtSentido.innerText = "BLOQUEADO";
+                    txtSentido.style.color = "#ff4d4d";
+                    contadorAlertas++;
+                    cntAlertas.innerText = contadorAlertas;
+                    iniciarSirene();
+                    adicionarAoLog("[ALERTA]: Emergência do sistema ativada!");
+                }
             } else {
-                elemento.classList.remove('emergencia-ativa');
-                document.body.classList.remove('emergencia-ativa');
-                icoSentido.innerText = "⏸️";
-                txtSentido.innerText = "PARADO";
-                txtSentido.style.color = "#00adb5";
-                pararSirene();
-                tocarSomReset();
-                adicionarAoLog("[SISTEMA]: Emergência desativada / Normalizado.");
+                if (emergenciaAtualWeb) {
+                    emergenciaAtualWeb = false;
+                    elemento.classList.remove('emergencia-ativa');
+                    document.body.classList.remove('emergencia-ativa');
+                    icoSentido.innerText = "⏸️";
+                    txtSentido.innerText = "PARADO";
+                    txtSentido.style.color = "#00adb5";
+                    pararSirene();
+                    tocarSomReset();
+                    adicionarAoLog("[SISTEMA]: Emergência desativada / Normalizado.");
+                }
             }
             return;
         }

@@ -8,6 +8,7 @@ extern bool chamada[4];
 extern volatile bool emergenciaAtivada;
 extern unsigned int totalViagensAcumuladas; 
 extern bool modoManual;
+extern bool referenciandoAtivo;
 extern int estadoAnteriorLog;
 
 static bool last_c1 = false, last_c2 = false, last_c3 = false;
@@ -89,9 +90,9 @@ void lerComandosBluetooth() {
     char cmd = Serial.read();
 
     if (cmd == 'Q' || cmd == 'q') { enviarEstadoCompleto(); }
-    else if (cmd == '1') { if (!modoManual) chamada[1] = true; }
-    else if (cmd == '2') { if (!modoManual) chamada[2] = true; }
-    else if (cmd == '3') { if (!modoManual) chamada[3] = true; }
+    else if (cmd == '1') { if (!modoManual && !referenciandoAtivo) chamada[1] = true; }
+    else if (cmd == '2') { if (!modoManual && !referenciandoAtivo) chamada[2] = true; }
+    else if (cmd == '3') { if (!modoManual && !referenciandoAtivo) chamada[3] = true; }
     else if (cmd == 'E' || cmd == 'e') {
       if (!emergenciaAtivada) {
         emergenciaAtivada = true;
@@ -103,7 +104,9 @@ void lerComandosBluetooth() {
       else enviarLog(F("ERRO: Botão físico ainda acionado!"));
     }
     else if (cmd == 'M' || cmd == 'm') {
-      modoManual = true; pararMotor();
+      modoManual = true;
+      referenciandoAtivo = false;
+      pararMotor();
       chamada[1] = false; chamada[2] = false; chamada[3] = false;
       atualizarLedsBotoes();
       enviarLog(F("[ADMIN]: Modo MANUAL / Manutenção ativado."));
@@ -119,15 +122,18 @@ void lerComandosBluetooth() {
       if (sensorAtivo(1)) {
         andarAtual = 1;
         andarDestino = 1;
+        referenciandoAtivo = false;
       } else if (sensorAtivo(2)) {
         andarAtual = 2;
         andarDestino = 2;
+        referenciandoAtivo = false;
       } else if (sensorAtivo(3)) {
         andarAtual = 3;
         andarDestino = 3;
-      } else if (!emergenciaAtivada) {
-        enviarLog(F("[SISTEMA]: Cabine fora de nível. Executando Homing..."));
-        executarHoming();
+        referenciandoAtivo = false;
+      } else {
+        enviarLog(F("[SISTEMA]: Cabine fora de nível. Iniciando Referenciamento..."));
+        iniciarReferenciamento();
       }
     }
     else if (cmd == 'U' || cmd == 'u') {

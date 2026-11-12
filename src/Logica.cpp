@@ -15,6 +15,7 @@
 
 bool chamada[4] = {false, false, false, false};
 bool modoManual = false;
+bool referenciandoAtivo = false;
 
 int andarAtual = 0;
 int andarDestino = 0;
@@ -22,6 +23,7 @@ int estado = 0;
 int direcaoAtual = 0;
 
 unsigned int totalViagensAcumuladas = 0;
+static unsigned long inicioHoming = 0;
 
 void registrarViagemConcluida() { totalViagensAcumuladas++; }
 
@@ -41,11 +43,62 @@ bool sensorAtivo(int andar) {
   return false;
 }
 
+// Inicia referenciamento não-bloqueante (usado ao sair do modo manual)
+void iniciarReferenciamento() {
+  referenciandoAtivo = true;
+  inicioHoming = millis();
+  if (!portaEstaTotalmenteFechada()) {
+    restaurarPortasAposEmergencia(andarAtual);
+  }
+}
+
+// Executado continuamente no loop() sem bloquear Bluetooth ou Emergência
+void gerenciarReferenciamento() {
+  if (!referenciandoAtivo) return;
+
+  // Aguarda portas fecharem antes de mover a cabine
+  if (!portaEstaTotalmenteFechada()) {
+    pararMotor();
+    inicioHoming = millis();
+    return;
+  }
+
+  lcdReferenciando();
+  ligarMotorDescer();
+
+  if (sensorAtivo(1) || sensorAtivo(2) || sensorAtivo(3)) {
+    pararMotor();
+    if (sensorAtivo(1)) andarAtual = 1;
+    else if (sensorAtivo(2)) andarAtual = 2;
+    else if (sensorAtivo(3)) andarAtual = 3;
+
+    andarDestino = andarAtual;
+    estado = 0;
+    estadoAnteriorLog = -1;
+    referenciandoAtivo = false;
+
+    lcdParado();
+    Serial.print(F("Referenciamento concluído no "));
+    Serial.print(andarAtual);
+    Serial.println(F("º Andar."));
+    return;
+  }
+
+  if (millis() - inicioHoming > 12000) {
+    pararMotor();
+    referenciandoAtivo = false;
+    estado = 0;
+    enviarLog(F("ALERTA: Timeout no referenciamento! Verifique sensores."));
+  }
+}
+
+// Homing inicial durante o setup()
 void executarHoming() {
   if (!portaEstaTotalmenteFechada()) {
     restaurarPortasAposEmergencia(andarAtual);
     while (!portaEstaTotalmenteFechada() && !emergenciaAtivada) {
       gerenciarMaquinaPortas();
+      lerComandosBluetooth();
       atualizarInterfaceBluetooth();
       delay(5);
     }
@@ -57,12 +110,13 @@ void executarHoming() {
   enviarLog(F("Elevador em Referenciamento..."));
   
   ligarMotorDescer();
-  unsigned long inicioHoming = millis();
+  unsigned long inicio = millis();
   
   while (!sensorAtivo(1) && !sensorAtivo(2) && !sensorAtivo(3) && !emergenciaAtivada) {
     atualizarRampaMotor();
+    lerComandosBluetooth();
     atualizarInterfaceBluetooth();
-    if (millis() - inicioHoming > 12000) {
+    if (millis() - inicio > 12000) {
       pararMotor();
       enviarLog(F("ALERTA: Timeout no referenciamento! Verifique sensores."));
       return;
@@ -130,7 +184,7 @@ void atualizarLedsBotoes() {
 }
 
 void lerBotoes() {
-  if (modoManual) return; 
+  if (modoManual || referenciandoAtivo) return; 
 
   Wire.requestFrom((uint8_t)PCF_ADDR, (uint8_t)1);
   if (!Wire.available()) return;

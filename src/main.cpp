@@ -49,8 +49,13 @@ void loop() {
       emergenciasTratadas = false;
       estado = 0;
       estadoAnteriorLog = -1;
-      enviarLog(F("Emergência normalizada. Retomando operação..."));
-      enviarLog(F("*X0")); 
+
+      if (referenciandoAtivo) {
+        iniciarReferenciamento(); // Reinicia timer e retoma o referenciamento interrompido
+        enviarLog(F("Emergência normalizada. Continuando referenciamento..."));
+      } else {
+        enviarLog(F("Emergência normalizada. Retomando operação..."));
+      }
     }
 
     lerBotoes();
@@ -58,7 +63,9 @@ void loop() {
 
     if (!modoManual) {
 
-      if (estado == 0) { // PARADO (STANDBY)
+      if (referenciandoAtivo) {
+        gerenciarReferenciamento();
+      } else if (estado == 0) { // PARADO (STANDBY)
         lcdParado();
 
         if (chamada[andarAtual] == true && sensorAtivo(andarAtual)) {
@@ -67,7 +74,6 @@ void loop() {
           tocarSomAoAbrir = false;
           estado = 2; 
         } else {
-          // Caso o andar atual tenha sido chamado enquanto a cabine já estava entre andares
           if (chamada[andarAtual] == true && !sensorAtivo(andarAtual)) {
             if (direcaoAtual == 1 && andarAtual < 3) andarAtual++;
             else if (direcaoAtual == -1 && andarAtual > 1) andarAtual--;
@@ -203,7 +209,6 @@ void loop() {
       }
 
       emergenciasTratadas = true;
-      enviarLog(F("*X1")); 
       estadoAnteriorLog = -1;
     }
 
