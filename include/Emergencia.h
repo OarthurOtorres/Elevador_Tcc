@@ -8,7 +8,7 @@ extern volatile bool emergenciaAtivada;
 void EmergenciaInit();
 void ParadaEmergencia();
 void ResetEmergencia();
-bool tentarResetarSistema(); // Função de validação de reset
+bool tentarResetarSistema();
 void rotinaSeguranca();
 
 #endif

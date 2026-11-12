@@ -166,7 +166,7 @@
             </div>
             <div class="form-grupo">
                 <label class="form-label">Senha</label>
-                <input type="password" class="form-input" id="inputSenha" placeholder="Digite a senha">
+                <input type="password" class="form-input" id="inputSenha" placeholder="Digite a senha" onkeydown="if(event.key==='Enter') fazerLogin()">
             </div>
             <div class="msg-erro-login" id="msgErroLogin">Usuário ou senha incorretos!</div>
             <button class="btn-acao-modal" onclick="fazerLogin()">Entrar no Modo Técnico</button>
@@ -190,41 +190,41 @@
             <div class="grid-admin-layout">
                 <!-- COLUNA 1: ACIONAMENTOS MANUAIS -->
                 <div class="box-admin-secao">
-                    <div class="titulo-secao">Controlo Manual do Hardware</div>
+                    <div class="titulo-secao">Controle Manual do Hardware</div>
                     
                     <button class="btn-comando-admin" onclick="alternarModoOperacao()">
                         <span>Modo Automático / Manual</span>
-                        <span>🔄 [M]</span>
+                        <span>🔄 [Alt+M]</span>
                     </button>
 
                     <div class="titulo-secao" style="margin-top: 4px;">Acionamentos de Motor</div>
                     
-                    <button class="btn-comando-admin" onclick="executarAcaoAdmin('SUBIR_FORCADO', 'U')">
+                    <button class="btn-comando-admin btn-manual-only desabilitado-auto" onclick="executarAcaoManual('SUBIR_FORCADO', 'U')">
                         <span>Forçar Subida de Motor</span>
-                        <span>⬆️ [U]</span>
+                        <span>⬆️ [Alt+U]</span>
                     </button>
                     
-                    <button class="btn-comando-admin" onclick="executarAcaoAdmin('DESCER_FORCADO', 'D')">
+                    <button class="btn-comando-admin btn-manual-only desabilitado-auto" onclick="executarAcaoManual('DESCER_FORCADO', 'D')">
                         <span>Forçar Descida de Motor</span>
-                        <span>⬇️ [D]</span>
+                        <span>⬇️ [Alt+D]</span>
                     </button>
 
-                    <button class="btn-comando-admin" onclick="executarAcaoAdmin('PARAR_MOTOR', 'S')">
+                    <button class="btn-comando-admin btn-manual-only desabilitado-auto" onclick="executarAcaoManual('PARAR_MOTOR', 'S')">
                         <span>Forçar Parada do Motor</span>
-                        <span>⏹️ [S]</span>
+                        <span>⏹️ [Alt+S]</span>
                     </button>
 
                     <div class="titulo-secao" style="margin-top: 4px;">Acionamento Individual das Portas</div>
 
-                    <button class="btn-comando-admin" onclick="executarAcaoAdmin('TOGGLE_PORTA_1', '4')">
+                    <button class="btn-comando-admin btn-manual-only desabilitado-auto" onclick="executarAcaoManual('TOGGLE_PORTA_1', '4')">
                         <span>Porta 1º Andar</span>
                         <span>🚪 [F7]</span>
                     </button>
-                    <button class="btn-comando-admin" onclick="executarAcaoAdmin('TOGGLE_PORTA_2', '5')">
+                    <button class="btn-comando-admin btn-manual-only desabilitado-auto" onclick="executarAcaoManual('TOGGLE_PORTA_2', '5')">
                         <span>Porta 2º Andar</span>
                         <span>🚪 [F8]</span>
                     </button>
-                    <button class="btn-comando-admin" onclick="executarAcaoAdmin('TOGGLE_PORTA_3', '6')">
+                    <button class="btn-comando-admin btn-manual-only desabilitado-auto" onclick="executarAcaoManual('TOGGLE_PORTA_3', '6')">
                         <span>Porta 3º Andar</span>
                         <span>🚪 [F9]</span>
                     </button>
@@ -256,9 +256,9 @@
 
                     <div class="titulo-secao" style="margin-top: 8px;">Manutenção Preventiva</div>
 
-                    <button class="btn-comando-admin alerta" onclick="executarAcaoAdmin('ZERAR_VIAGENS', 'Z')">
-                        <span>Zerar Contador de Viagens</span>
-                        <span>🧹 [Z]</span>
+                    <button class="btn-comando-admin alerta" onclick="zerarTodasMetricas()">
+                        <span>Zerar Métricas e Estatísticas</span>
+                        <span>🧹 [Alt+Z]</span>
                     </button>
                 </div>
             </div>

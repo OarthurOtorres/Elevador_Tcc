@@ -31,14 +31,13 @@ void ParadaEmergencia() {
   }
 }
 
-// CORREÇÃO DO BUG: Valida o estado real do botão de emergência físico
 bool tentarResetarSistema() {
   if (digitalRead(BtEmergencia) == LOW) { 
-    return false; // Bloqueia o reset se o botão físico estiver retido
+    return false;
   }
   
   emergenciaAtivada = false;
-  Serial.println("E:0"); // Avisa o supervisório que o sistema normalizou
+  Serial.println("E:0");
   return true;
 }
 

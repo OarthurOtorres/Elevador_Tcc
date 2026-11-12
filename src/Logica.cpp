@@ -2,6 +2,8 @@
 #include "Motor.h"
 #include "Display.h"   
 #include "Bluetooth.h" 
+#include "Portas.h"
+#include "Emergencia.h"
 #include <Arduino.h>
 #include <Wire.h>
 
@@ -40,20 +42,49 @@ bool sensorAtivo(int andar) {
 }
 
 void executarHoming() {
+  if (!portaEstaTotalmenteFechada()) {
+    restaurarPortasAposEmergencia(andarAtual);
+    while (!portaEstaTotalmenteFechada() && !emergenciaAtivada) {
+      gerenciarMaquinaPortas();
+      atualizarInterfaceBluetooth();
+      delay(5);
+    }
+  }
+
+  if (emergenciaAtivada) return;
+
   lcdReferenciando();
-  enviarLog("Elevador em Referenciamento...");
+  enviarLog(F("Elevador em Referenciamento..."));
+  
   ligarMotorDescer();
-  while (!sensorAtivo(1) && !sensorAtivo(2) && !sensorAtivo(3)) {
+  unsigned long inicioHoming = millis();
+  
+  while (!sensorAtivo(1) && !sensorAtivo(2) && !sensorAtivo(3) && !emergenciaAtivada) {
     atualizarRampaMotor();
+    atualizarInterfaceBluetooth();
+    if (millis() - inicioHoming > 12000) {
+      pararMotor();
+      enviarLog(F("ALERTA: Timeout no referenciamento! Verifique sensores."));
+      return;
+    }
     delay(5);
   }
+  
   pararMotor();
+
+  if (emergenciaAtivada) return;
+
   if (sensorAtivo(1)) andarAtual = 1;
   else if (sensorAtivo(2)) andarAtual = 2;
   else if (sensorAtivo(3)) andarAtual = 3;
+
   andarDestino = andarAtual;
+  estado = 0;
+
   lcdParado();
-  enviarLog("Elevador Parado no " + String(andarAtual) + "º Andar");
+  Serial.print(F("Referenciamento concluído no "));
+  Serial.print(andarAtual);
+  Serial.println(F("º Andar."));
 }
 
 void detectarAndarInicial() {
@@ -75,7 +106,6 @@ void initBtsESensores() {
   detectarAndarInicial();
 }
 
-// BLOQUEIA LEDS DOS BOTÕES FÍSICOS SE ESTIVER EM MODO MANUAL
 void atualizarLedsBotoes() {
   if (modoManual) {
     uint8_t bytePCF = 0b01101101; 
@@ -99,7 +129,6 @@ void atualizarLedsBotoes() {
   Wire.endTransmission();
 }
 
-// BLOQUEIA A LEITURA DOS BOTÕES FÍSICOS SE ESTIVER EM MODO MANUAL
 void lerBotoes() {
   if (modoManual) return; 
 

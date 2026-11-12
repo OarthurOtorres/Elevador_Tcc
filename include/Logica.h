@@ -9,7 +9,8 @@ extern int andarDestino;
 extern int estado;
 extern int direcaoAtual;
 extern unsigned int totalViagensAcumuladas;
-extern bool modoManual; // Variável global do Modo Técnico/Admin
+extern bool modoManual;
+extern int estadoAnteriorLog;
 
 void initBtsESensores();
 void lerBotoes();
@@ -17,5 +18,7 @@ void atualizarLedsBotoes();
 bool sensorAtivo(int andar);
 int escolherProximoAndar();
 void registrarViagemConcluida();
+void executarHoming();
+void detectarAndarInicial();
 
 #endif

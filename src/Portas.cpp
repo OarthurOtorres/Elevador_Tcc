@@ -9,14 +9,14 @@
 #define SERVO_P2 A1       
 #define SERVO_P3 A2       
 
-#define EEPROM_ADDR_TEMPO 0 // Endereço 0 da EEPROM para o tempo da porta
+#define EEPROM_ADDR_TEMPO 0
 
 const int ANGULO_FECHADO_P1 = 5;  const int ANGULO_ABERTO_P1 = 95;
 const int ANGULO_FECHADO_P2 = 0;  const int ANGULO_ABERTO_P2 = 90;
 const int ANGULO_FECHADO_P3 = 5;  const int ANGULO_ABERTO_P3 = 95;
 
 const unsigned long TEMPO_MOVIMENTO_TOTAL = 1500; 
-unsigned long tempoPortaAbertaMs = 6000; // Valor padrão 6s
+unsigned long tempoPortaAbertaMs = 6000;
 
 enum EstadoPorta { PORTA_FECHADA, PORTA_ABRINDO, PORTA_ABERTA, PORTA_FECHANDO, PORTA_EMERGENCIA };
 
@@ -61,10 +61,9 @@ void salvarTempoPorta(unsigned long tempoMs) {
 void inicializarPortas() {
   pinMode(SENSOR_IV_PIN, INPUT_PULLUP);
 
-  // Lê da EEPROM o tempo salvo
   EEPROM.get(EEPROM_ADDR_TEMPO, tempoPortaAbertaMs);
   if (tempoPortaAbertaMs < 2000 || tempoPortaAbertaMs > 20000) {
-    tempoPortaAbertaMs = 6000; // Restaura 6s se o valor da EEPROM for inválido
+    tempoPortaAbertaMs = 6000;
   }
 
   servoP1.attach(SERVO_P1, 500, 2500);
@@ -104,7 +103,6 @@ void comandarAberturaPorta(int andar) {
   }
 }
 
-// Controle individual de qualquer porta no Modo Manual
 void comandarTogglePortaEspecifica(int andar) {
   andarAtualPorta = andar;
   if (estadoAtualPorta == PORTA_FECHADA) {
@@ -149,7 +147,7 @@ void gerenciarMaquinaPortas() {
       } else {
         tempoInicioObstrucao = 0;
         setAlertaObstrucao(false);
-        if (agora - tempoInicioEstado >= tempoPortaAbertaMs) { // Usa o tempo configurado!
+        if (agora - tempoInicioEstado >= tempoPortaAbertaMs) {
           iniciarMovimentoPorta(andarAtualPorta, getAnguloFechado(andarAtualPorta));
           estadoAtualPorta = PORTA_FECHANDO;
           tempoInicioEstado = agora;

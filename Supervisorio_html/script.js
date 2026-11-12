@@ -28,7 +28,6 @@ const ledIR = document.getElementById('ledIR');
 const lblIR = document.getElementById('lblIR');
 const btnAdminAccess = document.getElementById('btnAdminAccess');
 
-// GERENCIAMENTO DE CREDENCIAIS SALVAS NO LOCALSTORAGE (PERMANECEM SALVAS)
 function getCredenciaisSalvas() {
     const user = localStorage.getItem('tcc_admin_user') || 'admin';
     const pass = localStorage.getItem('tcc_admin_pass') || 'admin123';
@@ -36,8 +35,10 @@ function getCredenciaisSalvas() {
 }
 
 function initAudio() {
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === 'suspended') audioCtx.resume();
+    try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+    } catch (e) {}
 }
 
 function tocarDingDong() {
@@ -45,28 +46,30 @@ function tocarDingDong() {
     initAudio();
     if (!audioCtx) return;
 
-    const now = audioCtx.currentTime;
-    const osc1 = audioCtx.createOscillator();
-    const gain1 = audioCtx.createGain();
-    osc1.type = 'sine';
-    osc1.frequency.setValueAtTime(659.25, now);
-    gain1.gain.setValueAtTime(0.35, now);
-    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
-    osc1.connect(gain1);
-    gain1.connect(audioCtx.destination);
-    osc1.start(now);
-    osc1.stop(now + 0.8);
+    try {
+        const now = audioCtx.currentTime;
+        const osc1 = audioCtx.createOscillator();
+        const gain1 = audioCtx.createGain();
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(659.25, now);
+        gain1.gain.setValueAtTime(0.35, now);
+        gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+        osc1.connect(gain1);
+        gain1.connect(audioCtx.destination);
+        osc1.start(now);
+        osc1.stop(now + 0.8);
 
-    const osc2 = audioCtx.createOscillator();
-    const gain2 = audioCtx.createGain();
-    osc2.type = 'sine';
-    osc2.frequency.setValueAtTime(523.25, now + 0.35);
-    gain2.gain.setValueAtTime(0.35, now + 0.35);
-    gain2.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
-    osc2.connect(gain2);
-    gain2.connect(audioCtx.destination);
-    osc2.start(now + 0.35);
-    osc2.stop(now + 1.2);
+        const osc2 = audioCtx.createOscillator();
+        const gain2 = audioCtx.createGain();
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(523.25, now + 0.35);
+        gain2.gain.setValueAtTime(0.35, now + 0.35);
+        gain2.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+        osc2.connect(gain2);
+        gain2.connect(audioCtx.destination);
+        osc2.start(now + 0.35);
+        osc2.stop(now + 1.2);
+    } catch (e) {}
 }
 
 function iniciarSirene() {
@@ -74,28 +77,30 @@ function iniciarSirene() {
     initAudio();
     if (!audioCtx) return;
 
-    const now = audioCtx.currentTime;
-    oscSirene = audioCtx.createOscillator();
-    lfoSirene = audioCtx.createOscillator();
-    lfoGain = audioCtx.createGain();
-    gainSirene = audioCtx.createGain();
+    try {
+        const now = audioCtx.currentTime;
+        oscSirene = audioCtx.createOscillator();
+        lfoSirene = audioCtx.createOscillator();
+        lfoGain = audioCtx.createGain();
+        gainSirene = audioCtx.createGain();
 
-    oscSirene.type = 'sawtooth';
-    oscSirene.frequency.setValueAtTime(850, now);
+        oscSirene.type = 'sawtooth';
+        oscSirene.frequency.setValueAtTime(850, now);
 
-    lfoSirene.type = 'sine';
-    lfoSirene.frequency.setValueAtTime(1.2, now);
-    lfoGain.gain.setValueAtTime(350, now);
+        lfoSirene.type = 'sine';
+        lfoSirene.frequency.setValueAtTime(1.2, now);
+        lfoGain.gain.setValueAtTime(350, now);
 
-    lfoSirene.connect(lfoGain);
-    lfoGain.connect(oscSirene.frequency);
+        lfoSirene.connect(lfoGain);
+        lfoGain.connect(oscSirene.frequency);
 
-    gainSirene.gain.setValueAtTime(0.18, now);
-    oscSirene.connect(gainSirene);
-    gainSirene.connect(audioCtx.destination);
+        gainSirene.gain.setValueAtTime(0.18, now);
+        oscSirene.connect(gainSirene);
+        gainSirene.connect(audioCtx.destination);
 
-    oscSirene.start(now);
-    lfoSirene.start(now);
+        oscSirene.start(now);
+        lfoSirene.start(now);
+    } catch (e) {}
 }
 
 function pararSirene() {
@@ -115,38 +120,42 @@ function tocarSomClique() {
     if (!somHabilitado) return;
     initAudio();
     if (!audioCtx) return;
-    const now = audioCtx.currentTime;
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(700, now);
-    gain.gain.setValueAtTime(0.1, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    osc.start(now);
-    osc.stop(now + 0.05);
+    try {
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(700, now);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.05);
+    } catch (e) {}
 }
 
 function tocarSomReset() {
     if (!somHabilitado) return;
     initAudio();
     if (!audioCtx) return;
-    const now = audioCtx.currentTime;
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(587.33, now);
-    osc.frequency.setValueAtTime(880, now + 0.1);
-    gain.gain.setValueAtTime(0.2, now);
-    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    osc.start(now);
-    osc.stop(now + 0.3);
+    try {
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(587.33, now);
+        osc.frequency.setValueAtTime(880, now + 0.1);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.3);
+    } catch (e) {}
 }
 
-/* LÓGICA DE MODAIS E ADMINISTRAÇÃO */
+/* MODAIS E ADMINISTRAÇÃO */
 function abrirModalAuth() {
     tocarSomClique();
     if (usuarioAutenticado) {
@@ -156,6 +165,7 @@ function abrirModalAuth() {
         document.getElementById('inputUsuario').value = creds.user;
         document.getElementById('inputSenha').value = "";
         document.getElementById('modalLogin').classList.add('ativo');
+        setTimeout(() => document.getElementById('inputSenha').focus(), 100);
     }
 }
 
@@ -182,6 +192,9 @@ function fazerLogin() {
 }
 
 function fazerLogout() {
+    if (modoManualAtivo) {
+        alternarModoOperacao();
+    }
     adicionarAoLogAdmin(`[SESSÃO]: Encerramento de sessão.`);
     usuarioAutenticado = null;
     btnAdminAccess.innerText = "🔒 Modo Técnico [F6]";
@@ -200,27 +213,54 @@ function fecharModalAdmin() {
 function alternarModoOperacao() {
     modoManualAtivo = !modoManualAtivo;
     const badge = document.getElementById('badgeModoOp');
+    const botoesManuais = document.querySelectorAll('.btn-manual-only');
+
     if (modoManualAtivo) {
         badge.innerText = "MODO: MANUAL / OVERRIDE";
         badge.className = "badge-status badge-manual";
+        botoesManuais.forEach(btn => btn.classList.remove('desabilitado-auto'));
         enviarComando('M');
         adicionarAoLogAdmin("Sistema alterado para MODO MANUAL de operação.");
     } else {
         badge.innerText = "MODO: AUTOMÁTICO";
         badge.className = "badge-status badge-auto";
+        botoesManuais.forEach(btn => btn.classList.add('desabilitado-auto'));
         enviarComando('A');
-        adicionarAoLogAdmin("Sistema retornado ao MODO AUTOMÁTICO.");
+        adicionarAoLogAdmin("Sistema retornado ao MODO AUTOMÁTICO (verificando nível/homing).");
     }
 }
 
-function executarAcaoAdmin(descricao, comando) {
+function executarAcaoManual(descricao, comando) {
+    if (!modoManualAtivo) {
+        adicionarAoLogAdmin("⚠️ Ative o MODO MANUAL [Alt+M] antes de usar os controles diretos.");
+        tocarSomClique();
+        return;
+    }
     enviarComando(comando);
     adicionarAoLogAdmin(`Ação executada: ${descricao} [Comando: ${comando}]`);
 }
 
+function zerarTodasMetricas() {
+    enviarComando('Z');
+    contadorViagens = 0;
+    contadorAlertas = 0;
+    paradasA1 = 0;
+    paradasA2 = 0;
+    paradasA3 = 0;
+
+    cntViagens.innerText = '0';
+    cntAlertas.innerText = '0';
+    document.getElementById('statA1').innerText = '0x';
+    document.getElementById('statA2').innerText = '0x';
+    document.getElementById('statA3').innerText = '0x';
+
+    atualizarGraficoDemanda();
+    adicionarAoLogAdmin("Métricas zeradas: Viagens, Alertas e Uso Relativo por Andar [Comando: Z]");
+}
+
 function salvarParametroPorta() {
     const segs = document.getElementById('cfgTempoPorta').value;
-    enviarComando('T' + segs);
+    enviarComando('T' + segs + '\n');
     adicionarAoLogAdmin(`Enviado novo tempo de porta: ${segs}s para gravação na EEPROM.`);
 }
 
@@ -253,21 +293,42 @@ function adicionarAoLogAdmin(msg) {
     logAudit.scrollTop = logAudit.scrollHeight;
 }
 
-/* TECLAS DE ATALHO DE F1 A F9, U, D, S, M */
+/* ATALHOS SEGUROS: BLOQUEADOS AO DIGITAR + INTERTRAVAMENTO ALT+TECLA */
 window.addEventListener('keydown', (e) => {
-    if (e.key === 'F1') { e.preventDefault(); enviarComando('1'); }
-    else if (e.key === 'F2') { e.preventDefault(); enviarComando('2'); }
-    else if (e.key === 'F3') { e.preventDefault(); enviarComando('3'); }
-    else if (e.key === 'F4') { e.preventDefault(); enviarComando('R'); }
-    else if (e.key === 'F5') { e.preventDefault(); enviarComando('E'); }
-    else if (e.key === 'F6') { e.preventDefault(); abrirModalAuth(); }
-    else if (e.key === 'F7') { e.preventDefault(); if (modoManualAtivo) executarAcaoAdmin('TOGGLE_PORTA_1', '4'); }
-    else if (e.key === 'F8') { e.preventDefault(); if (modoManualAtivo) executarAcaoAdmin('TOGGLE_PORTA_2', '5'); }
-    else if (e.key === 'F9') { e.preventDefault(); if (modoManualAtivo) executarAcaoAdmin('TOGGLE_PORTA_3', '6'); }
-    else if (e.key === 'u' || e.key === 'U') { if (modoManualAtivo) executarAcaoAdmin('SUBIR_FORCADO', 'U'); }
-    else if (e.key === 'd' || e.key === 'D') { if (modoManualAtivo) executarAcaoAdmin('DESCER_FORCADO', 'D'); }
-    else if (e.key === 's' || e.key === 'S') { if (modoManualAtivo) executarAcaoAdmin('PARAR_MOTOR', 'S'); }
-    else if (e.key === 'm' || e.key === 'M') { if (usuarioAutenticado) alternarModoOperacao(); }
+    const tagAtiva = document.activeElement ? document.activeElement.tagName : '';
+    const digitandoEmCampo = (tagAtiva === 'INPUT' || tagAtiva === 'TEXTAREA' || tagAtiva === 'SELECT');
+
+    if (e.key === 'F1') { e.preventDefault(); enviarComando('1'); return; }
+    if (e.key === 'F2') { e.preventDefault(); enviarComando('2'); return; }
+    if (e.key === 'F3') { e.preventDefault(); enviarComando('3'); return; }
+    if (e.key === 'F4') { e.preventDefault(); enviarComando('R'); return; }
+    if (e.key === 'F5') { e.preventDefault(); enviarComando('E'); return; }
+    if (e.key === 'F6') { e.preventDefault(); abrirModalAuth(); return; }
+    if (e.key === 'F7') { e.preventDefault(); executarAcaoManual('TOGGLE_PORTA_1', '4'); return; }
+    if (e.key === 'F8') { e.preventDefault(); executarAcaoManual('TOGGLE_PORTA_2', '5'); return; }
+    if (e.key === 'F9') { e.preventDefault(); executarAcaoManual('TOGGLE_PORTA_3', '6'); return; }
+
+    if (digitandoEmCampo) return;
+
+    if (e.altKey) {
+        const tecla = e.key.toLowerCase();
+        if (tecla === 'm' && usuarioAutenticado) {
+            e.preventDefault();
+            alternarModoOperacao();
+        } else if (tecla === 'u') {
+            e.preventDefault();
+            executarAcaoManual('SUBIR_FORCADO', 'U');
+        } else if (tecla === 'd') {
+            e.preventDefault();
+            executarAcaoManual('DESCER_FORCADO', 'D');
+        } else if (tecla === 's') {
+            e.preventDefault();
+            executarAcaoManual('PARAR_MOTOR', 'S');
+        } else if (tecla === 'z' && usuarioAutenticado) {
+            e.preventDefault();
+            zerarTodasMetricas();
+        }
+    }
 });
 
 function atualizarRelogio() {
@@ -335,8 +396,12 @@ btnConectar.addEventListener('click', async () => {
 async function enviarComando(caractere) {
     tocarSomClique();
     if (!escritor) return;
-    const encoder = new TextEncoder();
-    await escritor.write(encoder.encode(caractere));
+    try {
+        const encoder = new TextEncoder();
+        await escritor.write(encoder.encode(caractere));
+    } catch (e) {
+        console.error("Erro ao enviar comando serial:", e);
+    }
 }
 
 async function lerDadosDaSerial() {
@@ -471,7 +536,15 @@ function processarTagEspecial(tag) {
 
 function atualizarGraficoDemanda() {
     const total = paradasA1 + paradasA2 + paradasA3;
-    if (total === 0) return;
+    if (total === 0) {
+        document.getElementById('barA1').style.width = '0%';
+        document.getElementById('pctA1').innerText = '0%';
+        document.getElementById('barA2').style.width = '0%';
+        document.getElementById('pctA2').innerText = '0%';
+        document.getElementById('barA3').style.width = '0%';
+        document.getElementById('pctA3').innerText = '0%';
+        return;
+    }
     document.getElementById('barA1').style.width = Math.round((paradasA1 / total) * 100) + '%';
     document.getElementById('pctA1').innerText = Math.round((paradasA1 / total) * 100) + '%';
     document.getElementById('barA2').style.width = Math.round((paradasA2 / total) * 100) + '%';

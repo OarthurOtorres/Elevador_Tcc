@@ -13,6 +13,7 @@ unsigned long tempoParada = 0;
 unsigned long tempoUltimaPassagemAndar = 0; 
 bool comandoPortaEnviado = false;
 bool emergenciasTratadas = false;
+bool portaAbertaNaEmergencia = false;
 bool tocarSomAoAbrir = true;
 int estadoAnteriorLog = -1;
 
@@ -40,12 +41,16 @@ void loop() {
     if (emergenciasTratadas == true) { 
       pararMotor();
       setSireneEmergencia(false); 
-      restaurarPortasAposEmergencia(andarAtual);
+      if (portaAbertaNaEmergencia) {
+        restaurarPortasAposEmergencia(andarAtual);
+        portaAbertaNaEmergencia = false;
+      }
       desligarLedReset(); 
       emergenciasTratadas = false;
       estado = 0;
-      enviarLog("Emergência normalizada. Elevador pronto.");
-      enviarLog("*X0"); 
+      estadoAnteriorLog = -1;
+      enviarLog(F("Emergência normalizada. Retomando operação..."));
+      enviarLog(F("*X0")); 
     }
 
     lerBotoes();
@@ -56,23 +61,29 @@ void loop() {
       if (estado == 0) { // PARADO (STANDBY)
         lcdParado();
 
-        if (estadoAnteriorLog != 0) {
-          enviarLog("Elevador Parado no " + String(andarAtual) + "º Andar");
-          estadoAnteriorLog = 0;
-        }
-
-        if (chamada[andarAtual] == true) {
+        if (chamada[andarAtual] == true && sensorAtivo(andarAtual)) {
           chamada[andarAtual] = false; 
           comandoPortaEnviado = false; 
           tocarSomAoAbrir = false;
           estado = 2; 
         } else {
+          // Caso o andar atual tenha sido chamado enquanto a cabine já estava entre andares
+          if (chamada[andarAtual] == true && !sensorAtivo(andarAtual)) {
+            if (direcaoAtual == 1 && andarAtual < 3) andarAtual++;
+            else if (direcaoAtual == -1 && andarAtual > 1) andarAtual--;
+          }
+
           andarDestino = escolherProximoAndar();
           
           if (andarDestino != 0 && andarDestino != andarAtual) {
             if (portaEstaTotalmenteFechada()) {
               estado = 1; 
             }
+          } else if (estadoAnteriorLog != 0 && sensorAtivo(andarAtual)) {
+            Serial.print(F("Elevador Parado no "));
+            Serial.print(andarAtual);
+            Serial.println(F("º Andar"));
+            estadoAnteriorLog = 0;
           }
         }
 
@@ -83,7 +94,9 @@ void loop() {
         }
 
         if (estadoAnteriorLog != 1) {
-          enviarLog("Elevador em Movimento para o " + String(andarDestino) + "º Andar");
+          Serial.print(F("Elevador em Movimento para o "));
+          Serial.print(andarDestino);
+          Serial.println(F("º Andar"));
           estadoAnteriorLog = 1;
         }
 
@@ -94,7 +107,9 @@ void loop() {
           if (sensorAtivo(andarAtual + 1) && (millis() - tempoUltimaPassagemAndar > 600)) {
             andarAtual++;
             tempoUltimaPassagemAndar = millis();
-            enviarLog("Passando pelo " + String(andarAtual) + "º Andar");
+            Serial.print(F("Passando pelo "));
+            Serial.print(andarAtual);
+            Serial.println(F("º Andar"));
           }
         } else if (andarDestino < andarAtual) {
           ligarMotorDescer();
@@ -103,7 +118,9 @@ void loop() {
           if (sensorAtivo(andarAtual - 1) && (millis() - tempoUltimaPassagemAndar > 600)) {
             andarAtual--;
             tempoUltimaPassagemAndar = millis();
-            enviarLog("Passando pelo " + String(andarAtual) + "º Andar");
+            Serial.print(F("Passando pelo "));
+            Serial.print(andarAtual);
+            Serial.println(F("º Andar"));
           }
         }
 
@@ -113,7 +130,8 @@ void loop() {
           pararMotor();
           
           registrarViagemConcluida(); 
-          enviarLog("*V" + String(totalViagensAcumuladas)); 
+          Serial.print(F("*V"));
+          Serial.println(totalViagensAcumuladas); 
           
           chamada[andarAtual] = false; 
           comandoPortaEnviado = false; 
@@ -123,7 +141,9 @@ void loop() {
 
       } else if (estado == 2) { // PORTA ABERTA
         if (estadoAnteriorLog != 2) {
-          enviarLog("Chegou ao " + String(andarAtual) + "º Andar - Abrindo Porta");
+          Serial.print(F("Chegou ao "));
+          Serial.print(andarAtual);
+          Serial.println(F("º Andar - Abrindo Porta"));
           estadoAnteriorLog = 2;
         }
 
@@ -135,30 +155,55 @@ void loop() {
           if (tocarSomAoAbrir) {
             tocarDingDong();
           }
-          enviarLog("*P1"); 
+          enviarLog(F("*P1")); 
           comandoPortaEnviado = true;
         }
 
         if (portaEstaTotalmenteFechada()) {
-          enviarLog("*P0");
+          enviarLog(F("*P0"));
           chamada[andarAtual] = false; 
           estado = 0;
         }
       }
 
     } else {
-      // EXIBIÇÃO EM MODO MANUAL NO LCD
       lcdManutencao();
+
+      if (sentidoMotor == 1 && sensorAtivo(3)) {
+        pararMotor();
+        andarAtual = 3;
+        enviarLog(F("[ADMIN]: Limite superior (3º Andar) atingido - Motor parado."));
+      } else if (sentidoMotor == 2 && sensorAtivo(1)) {
+        pararMotor();
+        andarAtual = 1;
+        enviarLog(F("[ADMIN]: Limite inferior (1º Andar) atingido - Motor parado."));
+      }
     }
 
   } else { // MODO EMERGÊNCIA ATIVO
     if (emergenciasTratadas == false) {
       pararMotor();
       setSireneEmergencia(true); 
-      ativarPortaEmergencia(andarAtual);
+
+      int andarSensorAtivo = 0;
+      if (sensorAtivo(1)) andarSensorAtivo = 1;
+      else if (sensorAtivo(2)) andarSensorAtivo = 2;
+      else if (sensorAtivo(3)) andarSensorAtivo = 3;
+
+      if (andarSensorAtivo > 0) {
+        andarAtual = andarSensorAtivo;
+        ativarPortaEmergencia(andarAtual);
+        portaAbertaNaEmergencia = true;
+        Serial.print(F("PERIGO: Emergência Ativada! Porta do "));
+        Serial.print(andarAtual);
+        Serial.println(F("º andar aberta para resgate."));
+      } else {
+        portaAbertaNaEmergencia = false;
+        enviarLog(F("PERIGO: Emergência Ativada! Cabine fora de nível - Portas mantidas TRAVADAS."));
+      }
+
       emergenciasTratadas = true;
-      enviarLog("PERIGO: Emergência Ativada!");
-      enviarLog("*X1"); 
+      enviarLog(F("*X1")); 
       estadoAnteriorLog = -1;
     }
 

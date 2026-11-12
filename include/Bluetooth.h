@@ -5,6 +5,7 @@
 
 void BluetoothInit();
 void enviarLog(const String& mensagem);
+void enviarLog(const __FlashStringHelper* mensagem);
 void enviarEstadoCompleto();
 void atualizarInterfaceBluetooth();
 void lerComandosBluetooth();
